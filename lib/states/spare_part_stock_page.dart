@@ -13,12 +13,12 @@ import '../widgets/stock_table_card.dart';
 
 class SparePartStockPage extends StatefulWidget {
   final String token;
-  final String employeeName;
+  final String empName;
 
   const SparePartStockPage({
     Key? key,
     required this.token,
-    required this.employeeName,
+    required this.empName,
   }) : super(key: key);
 
   @override
@@ -163,7 +163,7 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
             StockTableCard(stockData: stockData),
             const SizedBox(height: 16),
             RecordInfoCard(
-              employeeName: widget.employeeName,
+              employeeName: widget.empName,
               initialRecordDate: todayStr,
             ),
             const SizedBox(height: 16),

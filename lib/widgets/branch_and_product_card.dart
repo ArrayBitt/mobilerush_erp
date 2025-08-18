@@ -18,6 +18,10 @@ class BranchAndProductCard extends StatefulWidget {
   final List<String> storageList;
   final ValueChanged<String?> onStorageChanged;
 
+  // เพิ่ม callback สำหรับ Location
+  final String? selectedLocation;
+  final ValueChanged<String?>? onLocationChanged;
+
   final String apiToken;
 
   const BranchAndProductCard({
@@ -33,6 +37,8 @@ class BranchAndProductCard extends StatefulWidget {
     required this.storageList,
     required this.onStorageChanged,
     required this.apiToken,
+    this.selectedLocation,
+    this.onLocationChanged,
   });
 
   @override
@@ -42,16 +48,20 @@ class BranchAndProductCard extends StatefulWidget {
 class _BranchAndProductCardState extends State<BranchAndProductCard> {
   String? currentDocument;
   String? currentBranch;
+  String? currentLocation;
   List<String> documentList = [];
+  List<String> locationList = [];
 
   @override
   void initState() {
     super.initState();
     currentDocument = widget.selectedDocument;
     currentBranch = widget.selectedBranch;
+    currentLocation = widget.selectedLocation;
+    fetchLocations(); // โหลด Location ตอน init
   }
 
-  //api-stockno
+  // API สำหรับเอกสาร
   Future<List<String>> fetchDocuments(String filter) async {
     try {
       final response = await http.get(
@@ -64,7 +74,6 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
         List<String> stockNos = [];
-
         for (var item in data) {
           final stockno = item['stockno'];
           if (stockno != null && stockno.isNotEmpty) {
@@ -80,7 +89,7 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
     }
   }
 
-  //api-branchcode
+  // API สำหรับสาขาตามเอกสาร
   Future<String?> fetchBranchByDocument(String stockno) async {
     try {
       final response = await http.get(
@@ -104,6 +113,32 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
       print('Error fetching branch: $e');
     }
     return null;
+  }
+
+  // API สำหรับ Location
+  Future<void> fetchLocations() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://erp-dev.somjai.app/api/locationitems/getAllLocationByselect?token=${widget.apiToken}',
+        ),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        setState(() {
+          locationList =
+              data
+                  .map<String>(
+                    (item) => '${item['locationname']} - ${item['location']}',
+                  )
+                  .toList();
+        });
+      }
+    } catch (e) {
+      print('Error fetching locations: $e');
+    }
   }
 
   @override
@@ -141,6 +176,7 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                 ),
                 const SizedBox(height: 8),
 
+                // --- Dropdown เอกสาร ---
                 const Padding(
                   padding: EdgeInsets.only(left: 20),
                   child: Text(
@@ -149,21 +185,28 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                   ),
                 ),
                 const SizedBox(height: 8),
-
-                DropdownSearch<String>(
+               DropdownSearch<String>(
                   selectedItem: currentDocument,
-                  popupProps: const PopupProps.menu(
+                  popupProps: PopupProps.menu(
                     showSearchBox: true,
                     searchFieldProps: TextFieldProps(
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'พิมพ์เพื่อค้นหาเอกสาร',
+                        fillColor: Colors.white,
+                        filled: true, // search box สีขาว
                       ),
+                    ),
+                    menuProps: const MenuProps(
+                      backgroundColor: Colors.white, // ✅ popup list เป็นสีขาว
                     ),
                   ),
                   dropdownDecoratorProps: const DropDownDecoratorProps(
                     dropdownSearchDecoration: InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      hintText: 'เลือกเอกสาร',
+                      fillColor: Colors.white,
+                      filled: true, // field สีขาว
                     ),
                   ),
                   asyncItems: fetchDocuments,
@@ -183,7 +226,9 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                   },
                 ),
 
+
                 const SizedBox(height: 8),
+                // --- Dropdown สาขา ---
                 const Padding(
                   padding: EdgeInsets.only(left: 20),
                   child: Text(
@@ -205,6 +250,7 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                 ),
 
                 const SizedBox(height: 8),
+                // --- Dropdown Location ใหม่ ---
                 const Padding(
                   padding: EdgeInsets.only(left: 20),
                   child: Text(
@@ -214,13 +260,21 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                 ),
                 const SizedBox(height: 8),
                 _buildDropdown(
-                  value: widget.selectedStorage,
-                  list: widget.storageList,
+                  value: currentLocation,
+                  list: locationList,
                   hint: 'เลือกที่เก็บ',
-                  onChanged: widget.onStorageChanged,
+                  onChanged: (value) {
+                    setState(() {
+                      currentLocation = value;
+                    });
+                    if (widget.onLocationChanged != null) {
+                      widget.onLocationChanged!(value);
+                    }
+                  },
                 ),
 
                 const SizedBox(height: 8),
+  
                 const Padding(
                   padding: EdgeInsets.only(left: 20),
                   child: Text(

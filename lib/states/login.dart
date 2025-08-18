@@ -1,5 +1,5 @@
 import 'package:erp/states/product_stock_page.dart';
-import 'package:erp/states/spare_part_stock_page.dart'; // ✅ เปลี่ยนเป็น SparePartStockPage
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -28,14 +28,14 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
-    final empName = prefs.getString('empName');
+    final empName = prefs.getString('emp_fname');
 
     if (token != null && token.isNotEmpty) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder:
-              (_) => SparePartStockPage(token: token, employeeName: '', ),
+              (_) => ProductStockPage(token: token, empName: empName!,  ),
         ),
       );
     }

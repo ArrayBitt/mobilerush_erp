@@ -160,7 +160,7 @@ class _ProductStockPageState extends State<ProductStockPage> {
                                 // ส่ง token จริงจาก ProductStockPage
                                 builder:
                                     (context) => SparePartStockPage(
-                                      token: widget.token, employeeName: '',
+                                      token: widget.token, empName: widget.empName,
                                       
                                     ),
                               ),
