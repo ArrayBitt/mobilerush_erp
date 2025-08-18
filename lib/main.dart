@@ -17,8 +17,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      // home: const LoginPage(),
-       home: const ProductStockPage(),
+       home: const LoginPage(),
+       //home: const ProductStockPage(),
       //home: const SparePartStockPage(),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

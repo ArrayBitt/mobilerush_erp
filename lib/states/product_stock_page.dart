@@ -3,7 +3,15 @@ import 'package:flutter/material.dart';
 import 'motorcycle_stock_page.dart'; // เพิ่ม import หน้าเป้าหมาย
 
 class ProductStockPage extends StatefulWidget {
-  const ProductStockPage({super.key});
+  final String token; // เพิ่ม token
+  final String empName;
+
+  const ProductStockPage({
+    super.key,
+    required this.token,
+
+    required this.empName,
+  });
 
   @override
   State<ProductStockPage> createState() => _ProductStockPageState();
@@ -149,7 +157,12 @@ class _ProductStockPageState extends State<ProductStockPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => SparePartStockPage(),
+                                // ส่ง token จริงจาก ProductStockPage
+                                builder:
+                                    (context) => SparePartStockPage(
+                                      token: widget.token, employeeName: '',
+                                      
+                                    ),
                               ),
                             );
                           },
@@ -201,6 +214,7 @@ class _ProductStockPageState extends State<ProductStockPage> {
                         ),
                       ),
                     ),
+                    
 
                     const SizedBox(height: 20),
                   ],

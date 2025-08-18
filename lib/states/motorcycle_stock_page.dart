@@ -66,7 +66,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
               'ตรวจสอบข้อมูล STOCK รถจักรยานยนต์',
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                fontSize: 18,
+                fontSize: 14,
                 letterSpacing: 1.5,
                 color: Colors.black,
               ),
@@ -103,22 +103,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                     searchController: searchController,
                   ),
 
-                  BranchAndProductCard(
-                    selectedBranch: selectedBranch,
-                    branchList: branchList,
-                    onBranchChanged: (value) {
-                      setState(() {
-                        selectedBranch = value!;
-                      });
-                    },
-                    selectedProduct: selectProduct,
-                    productList: productList,
-                    onProductChanged: (value) {
-                      setState(() {
-                        selectProduct = value!;
-                      });
-                    },
-                  ),
+                 
 
                   const SizedBox(height: 16),
 
@@ -165,7 +150,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                         const SizedBox(width: 12),
 
                         // ปุ่ม บันทึก
-                       ElevatedButton(
+                        ElevatedButton(
                           onPressed: () {
                             showDialog(
                               context: context,

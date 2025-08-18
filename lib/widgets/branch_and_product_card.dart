@@ -1,23 +1,110 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:dropdown_search/dropdown_search.dart';
+import 'package:http/http.dart' as http;
 
-class BranchAndProductCard extends StatelessWidget {
-  final String selectedBranch;
-  final List<String> branchList;
+class BranchAndProductCard extends StatefulWidget {
+  final String? selectedBranch;
   final ValueChanged<String?> onBranchChanged;
 
-  final String selectedProduct;
+  final String? selectedProduct;
   final List<String> productList;
   final ValueChanged<String?> onProductChanged;
+
+  final String? selectedDocument;
+  final ValueChanged<String?> onDocumentChanged;
+
+  final String? selectedStorage;
+  final List<String> storageList;
+  final ValueChanged<String?> onStorageChanged;
+
+  final String apiToken;
 
   const BranchAndProductCard({
     super.key,
     required this.selectedBranch,
-    required this.branchList,
     required this.onBranchChanged,
     required this.selectedProduct,
     required this.productList,
     required this.onProductChanged,
+    required this.selectedDocument,
+    required this.onDocumentChanged,
+    required this.selectedStorage,
+    required this.storageList,
+    required this.onStorageChanged,
+    required this.apiToken,
   });
+
+  @override
+  State<BranchAndProductCard> createState() => _BranchAndProductCardState();
+}
+
+class _BranchAndProductCardState extends State<BranchAndProductCard> {
+  String? currentDocument;
+  String? currentBranch;
+  List<String> documentList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    currentDocument = widget.selectedDocument;
+    currentBranch = widget.selectedBranch;
+  }
+
+  //api-stockno
+  Future<List<String>> fetchDocuments(String filter) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$filter&token=${widget.apiToken}',
+        ),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        List<String> stockNos = [];
+
+        for (var item in data) {
+          final stockno = item['stockno'];
+          if (stockno != null && stockno.isNotEmpty) {
+            stockNos.add(stockno.toString());
+          }
+        }
+        documentList = stockNos;
+        return stockNos;
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  //api-branchcode
+  Future<String?> fetchBranchByDocument(String stockno) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$stockno&token=${widget.apiToken}',
+        ),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        if (data.isNotEmpty) {
+          final item = data.first;
+          final branchObj = item['branchformtran'];
+          if (branchObj != null) {
+            return '${branchObj['branchcode']} - ${branchObj['branchname']}';
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching branch: $e');
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +121,6 @@ class BranchAndProductCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ปุ่มแดงกดไม่ได้
                 Container(
                   width: double.infinity,
                   height: 45,
@@ -53,10 +139,51 @@ class BranchAndProductCard extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 8),
 
-                // สาขา label
+                const Padding(
+                  padding: EdgeInsets.only(left: 20),
+                  child: Text(
+                    'เอกสาร',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                DropdownSearch<String>(
+                  selectedItem: currentDocument,
+                  popupProps: const PopupProps.menu(
+                    showSearchBox: true,
+                    searchFieldProps: TextFieldProps(
+                      decoration: InputDecoration(
+                        hintText: 'พิมพ์เพื่อค้นหาเอกสาร',
+                      ),
+                    ),
+                  ),
+                  dropdownDecoratorProps: const DropDownDecoratorProps(
+                    dropdownSearchDecoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                  ),
+                  asyncItems: fetchDocuments,
+                  onChanged: (value) async {
+                    setState(() {
+                      currentDocument = value;
+                    });
+                    widget.onDocumentChanged(value);
+
+                    if (value != null) {
+                      final branch = await fetchBranchByDocument(value);
+                      setState(() {
+                        currentBranch = branch;
+                      });
+                      widget.onBranchChanged(branch);
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 8),
                 const Padding(
                   padding: EdgeInsets.only(left: 20),
                   child: Text(
@@ -64,40 +191,36 @@ class BranchAndProductCard extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
-                // Dropdown สาขา
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white,
-                    ),
-                    width: double.infinity,
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedBranch,
-                        isExpanded: true,
-                        items:
-                            branchList.map((String branch) {
-                              return DropdownMenuItem<String>(
-                                value: branch,
-                                child: Text(branch),
-                              );
-                            }).toList(),
-                        onChanged: onBranchChanged,
-                      ),
-                    ),
-                  ),
+                _buildDropdown(
+                  value: currentBranch,
+                  list: currentBranch != null ? [currentBranch!] : [],
+                  hint: 'เลือกสาขา',
+                  onChanged: (value) {
+                    setState(() {
+                      currentBranch = value;
+                    });
+                    widget.onBranchChanged(value);
+                  },
                 ),
 
                 const SizedBox(height: 8),
+                const Padding(
+                  padding: EdgeInsets.only(left: 20),
+                  child: Text(
+                    'ที่เก็บ',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildDropdown(
+                  value: widget.selectedStorage,
+                  list: widget.storageList,
+                  hint: 'เลือกที่เก็บ',
+                  onChanged: widget.onStorageChanged,
+                ),
 
-                // รหัสสินค้า label
+                const SizedBox(height: 8),
                 const Padding(
                   padding: EdgeInsets.only(left: 20),
                   child: Text(
@@ -105,38 +228,52 @@ class BranchAndProductCard extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
-                // Dropdown รหัสสินค้า
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white,
-                    ),
-                    width: double.infinity,
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedProduct,
-                        isExpanded: true,
-                        items:
-                            productList.map((String product) {
-                              return DropdownMenuItem<String>(
-                                value: product,
-                                child: Text(product),
-                              );
-                            }).toList(),
-                        onChanged: onProductChanged,
-                      ),
-                    ),
-                  ),
+                _buildDropdown(
+                  value: widget.selectedProduct,
+                  list: widget.productList,
+                  hint: 'เลือกสินค้า',
+                  onChanged: widget.onProductChanged,
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String? value,
+    required List<String> list,
+    required String hint,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
+        ),
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: list.contains(value) ? value : null,
+            hint: Text(hint),
+            isExpanded: true,
+            items:
+                list
+                    .map(
+                      (item) => DropdownMenuItem<String>(
+                        value: item,
+                        child: Text(item),
+                      ),
+                    )
+                    .toList(),
+            onChanged: onChanged,
           ),
         ),
       ),
