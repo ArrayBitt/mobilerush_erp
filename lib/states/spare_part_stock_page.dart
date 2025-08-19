@@ -1,15 +1,10 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'dart:convert';
-
-import 'package:erp/dialog/save_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-
 import '../widgets/branch_and_product_card.dart';
 import '../widgets/record_info_card.dart';
 import '../widgets/search_bar_section.dart';
-import '../widgets/stock_table_card.dart';
+
+import '../dialog/save_dialog.dart';
 
 class SparePartStockPage extends StatefulWidget {
   final String token;
@@ -30,57 +25,13 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
   final List<String> options = ['ค้นหาจาก', 'รหัส', 'ชื่อ', 'หมวดหมู่'];
 
   String? selectedBranch;
-
-  List<String> productList = [];
   String? selectedProduct;
-
   String? selectedDocument;
-
-  List<String> storageList = [];
   String? selectedStorage;
+  List<String> storageList = [];
 
-  final List<Map<String, String>> stockData = List.generate(
-    10,
-    (index) => {'No.': '${index + 1}'},
-  );
 
   final TextEditingController searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    fetchProducts();
-    // fetchBranches ลบออกเพราะ BranchAndProductCard handle เอง
-  }
-
-  Future<void> fetchProducts() async {
-    try {
-      final response = await http.get(
-        Uri.parse(
-          'https://erp-dev.somjai.app/api/submodels/getAllBysearchSparecheckstock?keyword=',
-        ),
-        headers: {
-          'Authorization': 'Bearer ${widget.token}',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          productList =
-              data
-                  .map((e) => '${e['submodel_code']} : ${e['meaning']}')
-                  .toList();
-          if (productList.isNotEmpty) selectedProduct = productList.first;
-        });
-      } else {
-        print('Failed to load products. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching products: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,13 +51,11 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
               ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
             ),
             const SizedBox(width: 10),
             const Text(
-              'ตรวจสอบข้อมูล STOCK อะไหล่',
+              'SparePartStock',
               style: TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 16,
@@ -135,21 +84,23 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
             SearchBarSection(
               selectedOption: selectedOption,
               options: options,
-              onOptionChanged: (value) {
-                setState(() {
-                  selectedOption = value!;
-                });
-              },
+              onOptionChanged:
+                  (value) => setState(() => selectedOption = value!),
               searchController: searchController,
             ),
+            const SizedBox(height: 16),
             BranchAndProductCard(
               selectedBranch: selectedBranch,
               onBranchChanged:
                   (value) => setState(() => selectedBranch = value),
               selectedProduct: selectedProduct,
-              productList: productList,
-              onProductChanged:
-                  (value) => setState(() => selectedProduct = value),
+              onProductChanged: (value) {
+                setState(() => selectedProduct = value);
+                if (value != null) {
+                  final code = value.split(' : ')[0];
+                
+                }
+              },
               selectedDocument: selectedDocument,
               onDocumentChanged:
                   (value) => setState(() => selectedDocument = value),
@@ -158,9 +109,12 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
               onStorageChanged:
                   (value) => setState(() => selectedStorage = value),
               apiToken: widget.token,
+              onAddItem: (productCode, location) {
+
+              },
             ),
             const SizedBox(height: 16),
-            StockTableCard(stockData: stockData),
+   
             const SizedBox(height: 16),
             RecordInfoCard(
               employeeName: widget.empName,
@@ -171,11 +125,8 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ปุ่ม ยกเลิก
                   OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFBF0000)),
                       backgroundColor: Colors.white,
@@ -193,27 +144,23 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // ปุ่ม บันทึก
                   ElevatedButton(
                     onPressed: () {
                       showDialog(
                         context: context,
-                        builder: (context) {
-                          return SaveDialog(
-                            onCancel: () {
-                              Navigator.of(context).pop();
-                            },
-                            onConfirm: () {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
-                                ),
-                              );
-                              print('บันทึกข้อมูลการตรวจนับสต๊อกเรียบร้อย');
-                            },
-                          );
-                        },
+                        builder:
+                            (context) => SaveDialog(
+                              onCancel: () => Navigator.of(context).pop(),
+                              onConfirm: () {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
+                                  ),
+                                );
+                                print('บันทึกข้อมูลการตรวจนับสต๊อกเรียบร้อย');
+                              },
+                            ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -231,7 +178,6 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),

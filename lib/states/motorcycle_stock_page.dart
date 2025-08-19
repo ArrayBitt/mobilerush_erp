@@ -4,7 +4,7 @@ import 'package:intl/intl.dart'; // เพิ่ม import
 
 import '../widgets/search_bar_section.dart';
 import '../widgets/branch_and_product_card.dart';
-import '../widgets/stock_table_card.dart';
+
 import '../widgets/record_info_card.dart'; // <-- import ตัวใหม่
 
 class MotorcycleStockPage extends StatefulWidget {
@@ -107,7 +107,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
 
                   const SizedBox(height: 16),
 
-                  StockTableCard(stockData: stockData),
+               
 
                   const SizedBox(height: 16),
 

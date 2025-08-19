@@ -34,8 +34,7 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder:
-              (_) => ProductStockPage(token: token, empName: empName!,  ),
+          builder: (_) => ProductStockPage(token: token, empName: ''),
         ),
       );
     }
@@ -83,8 +82,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder:
-                  (_) => ProductStockPage(token: token, empName: empName, ),
+              builder: (_) => ProductStockPage(token: token, empName: empName),
             ),
           );
         } else {

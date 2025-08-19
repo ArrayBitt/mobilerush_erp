@@ -1,14 +1,14 @@
-import 'dart:convert';
+import 'package:erp/states/mobile_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:http/http.dart' as http;
+import '../dialog/edit_stock_dialog.dart';
+import '../service/api_service.dart';
 
 class BranchAndProductCard extends StatefulWidget {
   final String? selectedBranch;
   final ValueChanged<String?> onBranchChanged;
 
   final String? selectedProduct;
-  final List<String> productList;
   final ValueChanged<String?> onProductChanged;
 
   final String? selectedDocument;
@@ -18,7 +18,8 @@ class BranchAndProductCard extends StatefulWidget {
   final List<String> storageList;
   final ValueChanged<String?> onStorageChanged;
 
-  // เพิ่ม callback สำหรับ Location
+  final void Function(String productCode, String location)? onAddItem;
+
   final String? selectedLocation;
   final ValueChanged<String?>? onLocationChanged;
 
@@ -29,7 +30,6 @@ class BranchAndProductCard extends StatefulWidget {
     required this.selectedBranch,
     required this.onBranchChanged,
     required this.selectedProduct,
-    required this.productList,
     required this.onProductChanged,
     required this.selectedDocument,
     required this.onDocumentChanged,
@@ -37,6 +37,7 @@ class BranchAndProductCard extends StatefulWidget {
     required this.storageList,
     required this.onStorageChanged,
     required this.apiToken,
+    this.onAddItem,
     this.selectedLocation,
     this.onLocationChanged,
   });
@@ -46,96 +47,72 @@ class BranchAndProductCard extends StatefulWidget {
 }
 
 class _BranchAndProductCardState extends State<BranchAndProductCard> {
+  late ApiService apiService;
+
   String? currentDocument;
   String? currentBranch;
   String? currentLocation;
+  String? currentProduct;
+
   List<String> documentList = [];
   List<String> locationList = [];
+  List<String> productList = [];
+
+  List<Map<String, String>> stockData = [];
 
   @override
   void initState() {
     super.initState();
+    apiService = ApiService(widget.apiToken);
+
     currentDocument = widget.selectedDocument;
     currentBranch = widget.selectedBranch;
     currentLocation = widget.selectedLocation;
-    fetchLocations(); // โหลด Location ตอน init
+    currentProduct = widget.selectedProduct;
+
+    fetchLocationsFromApi();
+    fetchProductsFromApi();
   }
 
-  // API สำหรับเอกสาร
+  Future<void> fetchProductsFromApi() async {
+    try {
+      final products = await apiService.fetchProducts();
+      setState(() {
+        productList = products;
+      });
+      print('Fetched products: $productList');
+    } catch (e) {
+      print('Error fetching products: $e');
+    }
+  }
+
   Future<List<String>> fetchDocuments(String filter) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$filter&token=${widget.apiToken}',
-        ),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        List<String> stockNos = [];
-        for (var item in data) {
-          final stockno = item['stockno'];
-          if (stockno != null && stockno.isNotEmpty) {
-            stockNos.add(stockno.toString());
-          }
-        }
-        documentList = stockNos;
-        return stockNos;
-      }
-      return [];
+      final docs = await apiService.fetchDocuments(filter);
+      documentList = docs;
+      return docs;
     } catch (e) {
+      print('Error fetching documents: $e');
       return [];
     }
   }
 
-  // API สำหรับสาขาตามเอกสาร
   Future<String?> fetchBranchByDocument(String stockno) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$stockno&token=${widget.apiToken}',
-        ),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        if (data.isNotEmpty) {
-          final item = data.first;
-          final branchObj = item['branchformtran'];
-          if (branchObj != null) {
-            return '${branchObj['branchcode']} - ${branchObj['branchname']}';
-          }
-        }
-      }
+      final branch = await apiService.fetchBranchByDocument(stockno);
+      return branch;
     } catch (e) {
       print('Error fetching branch: $e');
+      return null;
     }
-    return null;
   }
 
-  // API สำหรับ Location
-  Future<void> fetchLocations() async {
+  Future<void> fetchLocationsFromApi() async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          'https://erp-dev.somjai.app/api/locationitems/getAllLocationByselect?token=${widget.apiToken}',
-        ),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        setState(() {
-          locationList =
-              data
-                  .map<String>(
-                    (item) => '${item['locationname']} - ${item['location']}',
-                  )
-                  .toList();
-        });
-      }
+      final locations = await apiService.fetchLocations();
+      setState(() {
+        locationList = locations;
+      });
     } catch (e) {
       print('Error fetching locations: $e');
     }
@@ -146,152 +123,444 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400),
-        child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 4,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: 45,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFBF0000),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'ข้อมูล STOCK สินค้าอะไหล่',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
+        child: Column(
+          children: [
+            // Card หลัก
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
                 ),
-                const SizedBox(height: 8),
-
-                // --- Dropdown เอกสาร ---
-                const Padding(
-                  padding: EdgeInsets.only(left: 20),
-                  child: Text(
-                    'เอกสาร',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
-                const SizedBox(height: 8),
-               DropdownSearch<String>(
-                  selectedItem: currentDocument,
-                  popupProps: PopupProps.menu(
-                    showSearchBox: true,
-                    searchFieldProps: TextFieldProps(
-                      decoration: const InputDecoration(
-                        hintText: 'พิมพ์เพื่อค้นหาเอกสาร',
-                        fillColor: Colors.white,
-                        filled: true, // search box สีขาว
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Container(
+                      width: double.infinity,
+                      height: 45,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFBF0000),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'ข้อมูล STOCK สินค้าอะไหล่',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
-                    menuProps: const MenuProps(
-                      backgroundColor: Colors.white, // ✅ popup list เป็นสีขาว
+                    const SizedBox(height: 8),
+
+                    // เอกสาร
+                    const Padding(
+                      padding: EdgeInsets.only(left: 20),
+                      child: Text(
+                        'เอกสาร',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
-                  ),
-                  dropdownDecoratorProps: const DropDownDecoratorProps(
-                    dropdownSearchDecoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                      hintText: 'เลือกเอกสาร',
-                      fillColor: Colors.white,
-                      filled: true, // field สีขาว
+                    const SizedBox(height: 8),
+                    DropdownSearch<String>(
+                      selectedItem: currentDocument,
+                      popupProps: PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: const TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'พิมพ์เพื่อค้นหาเอกสาร',
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                        ),
+                        menuProps: const MenuProps(
+                          backgroundColor: Colors.white,
+                        ),
+                      ),
+                      dropdownDecoratorProps: const DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          hintText: 'เลือกเอกสาร',
+                          fillColor: Colors.white,
+                          filled: true,
+                        ),
+                      ),
+                      asyncItems: fetchDocuments,
+                      onChanged: (value) async {
+                        setState(() {
+                          currentDocument = value;
+                        });
+                        widget.onDocumentChanged(value);
+
+                        if (value != null) {
+                          final branch = await fetchBranchByDocument(value);
+                          setState(() {
+                            currentBranch = branch;
+                          });
+                          widget.onBranchChanged(branch);
+                        }
+                      },
                     ),
-                  ),
-                  asyncItems: fetchDocuments,
-                  onChanged: (value) async {
-                    setState(() {
-                      currentDocument = value;
-                    });
-                    widget.onDocumentChanged(value);
 
-                    if (value != null) {
-                      final branch = await fetchBranchByDocument(value);
-                      setState(() {
-                        currentBranch = branch;
-                      });
-                      widget.onBranchChanged(branch);
-                    }
-                  },
-                ),
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 20),
+                      child: Text(
+                        'สาขา',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildDropdown(
+                      value: currentBranch,
+                      list: currentBranch != null ? [currentBranch!] : [],
+                      hint: 'เลือกสาขา',
+                      onChanged: (value) {
+                        setState(() {
+                          currentBranch = value;
+                        });
+                        widget.onBranchChanged(value);
+                      },
+                    ),
 
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 20),
+                      child: Text(
+                        'ที่เก็บ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildDropdown(
+                      value: currentLocation,
+                      list: locationList,
+                      hint: 'เลือกที่เก็บ',
+                      onChanged: (value) {
+                        setState(() {
+                          currentLocation = value;
+                        });
+                        widget.onLocationChanged?.call(value);
+                      },
+                    ),
 
-                const SizedBox(height: 8),
-                // --- Dropdown สาขา ---
-                const Padding(
-                  padding: EdgeInsets.only(left: 20),
-                  child: Text(
-                    'สาขา',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildDropdown(
-                  value: currentBranch,
-                  list: currentBranch != null ? [currentBranch!] : [],
-                  hint: 'เลือกสาขา',
-                  onChanged: (value) {
-                    setState(() {
-                      currentBranch = value;
-                    });
-                    widget.onBranchChanged(value);
-                  },
-                ),
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 20),
+                      child: Text(
+                        'รหัสสินค้า',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildDropdown(
+                      value: currentProduct,
+                      list: productList,
+                      hint: 'เลือกสินค้า',
+                      onChanged: (value) {
+                        setState(() {
+                          currentProduct = value;
+                        });
+                        widget.onProductChanged(value);
+                      },
+                    ),
 
-                const SizedBox(height: 8),
-                // --- Dropdown Location ใหม่ ---
-                const Padding(
-                  padding: EdgeInsets.only(left: 20),
-                  child: Text(
-                    'ที่เก็บ',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildDropdown(
-                  value: currentLocation,
-                  list: locationList,
-                  hint: 'เลือกที่เก็บ',
-                  onChanged: (value) {
-                    setState(() {
-                      currentLocation = value;
-                    });
-                    if (widget.onLocationChanged != null) {
-                      widget.onLocationChanged!(value);
-                    }
-                  },
-                ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          if (currentProduct != null &&
+                              currentLocation != null) {
+                            final onlyLocation =
+                                currentLocation!.split(' - ').last.trim();
 
-                const SizedBox(height: 8),
-  
-                const Padding(
-                  padding: EdgeInsets.only(left: 20),
-                  child: Text(
-                    'รหัสสินค้า',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
+                            setState(() {
+                              stockData.add({
+                                'รหัสสินค้า': currentProduct!,
+                                'ที่เก็บ': onlyLocation,
+                                'จำนวน': '0',
+                              });
+                              currentProduct = null;
+                              currentLocation = null;
+                            });
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'เพิ่มสินค้า ${stockData.last['รหัสสินค้า']} สำเร็จ',
+                                ),
+                              ),
+                            );
+
+                            widget.onAddItem?.call(
+                              stockData.last['รหัสสินค้า']!,
+                              stockData.last['ที่เก็บ']!,
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('กรุณาเลือกสินค้าและที่เก็บ'),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('เพิ่มเข้าตาราง'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFBF0000),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                _buildDropdown(
-                  value: widget.selectedProduct,
-                  list: widget.productList,
-                  hint: 'เลือกสินค้า',
-                  onChanged: widget.onProductChanged,
-                ),
-              ],
+              ),
             ),
-          ),
+
+            const SizedBox(height: 12),
+
+            // Card ตารางแยก
+            if (stockData.isNotEmpty)
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header Card
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFBF0000),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'รายการสินค้าในสต็อก',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    // Header ตาราง
+                    Container(
+                      color: Colors.grey.shade300,
+                      child: Row(
+                        children: const [
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text(
+                                'รหัสสินค้า',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text(
+                                'ที่เก็บ',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text(
+                                'จำนวน',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text(
+                                'สแกน',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // ตารางสินค้า
+                    ...stockData.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      var data = entry.value;
+                      return Container(
+                        color:
+                            index % 2 == 0
+                                ? Colors.white
+                                : Colors.grey.shade100,
+                        child: Row(
+                          children: [
+                            // รหัสสินค้า (กดเพื่อ ลบ)
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder:
+                                        (context) => AlertDialog(
+                                          title: const Text('ลบสินค้า'),
+                                          content: Text(
+                                            'คุณต้องการลบสินค้า ${data['รหัสสินค้า']} หรือไม่?',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed:
+                                                  () => Navigator.of(
+                                                    context,
+                                                  ).pop(false),
+                                              child: const Text('ยกเลิก'),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed:
+                                                  () => Navigator.of(
+                                                    context,
+                                                  ).pop(true),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.red,
+                                              ),
+                                              child: const Text('ลบ'),
+                                            ),
+                                          ],
+                                        ),
+                                  );
+
+                                  if (confirm == true) {
+                                    setState(() {
+                                      stockData.removeAt(index);
+                                    });
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Text(
+                                    data['รหัสสินค้า'] ?? '',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.blue,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // ที่เก็บ
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  data['ที่เก็บ'] ?? '',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+
+                            // จำนวน
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  final newQty = await showDialog<int>(
+                                    context: context,
+                                    builder:
+                                        (context) => EditStockDialog(
+                                          productCode: data['รหัสสินค้า']!,
+                                          currentQuantity:
+                                              int.tryParse(
+                                                data['จำนวน'] ?? '0',
+                                              ) ??
+                                              0,
+                                        ),
+                                  );
+
+                                  if (newQty != null) {
+                                    setState(() {
+                                      stockData[index]['จำนวน'] =
+                                          newQty.toString();
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    data['จำนวน'] ?? '0',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // ปุ่ม scan
+                            Expanded(
+                              child: IconButton(
+                                icon: const Icon(Icons.qr_code_scanner),
+                                onPressed: () async {
+                                  final scannedCode =
+                                      await Navigator.push<String?>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => const MobileScannerPage(),
+                                        ),
+                                      );
+
+                                  if (scannedCode != null &&
+                                      scannedCode == data['รหัสสินค้า']) {
+                                    setState(() {
+                                      final currentQty =
+                                          int.tryParse(data['จำนวน'] ?? '0') ??
+                                          0;
+                                      stockData[index]['จำนวน'] =
+                                          (currentQty + 1).toString();
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -303,34 +572,29 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
     required String hint,
     required ValueChanged<String?> onChanged,
   }) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.white,
-        ),
-        width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: list.contains(value) ? value : null,
-            hint: Text(hint),
-            isExpanded: true,
-            items:
-                list
-                    .map(
-                      (item) => DropdownMenuItem<String>(
-                        value: item,
-                        child: Text(item),
-                      ),
-                    )
-                    .toList(),
-            onChanged: onChanged,
+    return DropdownSearch<String>(
+      selectedItem: value,
+      items: list,
+      popupProps: const PopupProps.menu(
+        showSearchBox: true,
+        searchFieldProps: TextFieldProps(
+          decoration: InputDecoration(
+            hintText: 'ค้นหา',
+            fillColor: Colors.white,
+            filled: true,
           ),
         ),
       ),
+      dropdownDecoratorProps: DropDownDecoratorProps(
+        dropdownSearchDecoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          hintText: hint,
+          fillColor: Colors.white,
+          filled: true,
+        ),
+      ),
+      onChanged: onChanged,
     );
   }
 }
