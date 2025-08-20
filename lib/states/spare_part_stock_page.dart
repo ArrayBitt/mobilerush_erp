@@ -1,10 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ✅ เพิ่ม import
 import '../widgets/branch_and_product_card.dart';
 import '../widgets/record_info_card.dart';
-import '../widgets/search_bar_section.dart';
-
 import '../dialog/save_dialog.dart';
+import '../service/api_service.dart';
 
 class SparePartStockPage extends StatefulWidget {
   final String token;
@@ -30,12 +31,51 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
   String? selectedStorage;
   List<String> storageList = [];
 
+  List<Map<String, String>> stockData = [];
 
   final TextEditingController searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedPreferences();
+  }
+
+  Future<void> _loadSavedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      selectedBranch = prefs.getString("selectedBranch");
+      selectedProduct = prefs.getString("selectedProduct");
+      selectedDocument = prefs.getString("selectedDocument");
+      selectedStorage = prefs.getString("selectedStorage");
+    });
+
+    // โหลด stockData
+    final stockJson = prefs.getString('stockData');
+    if (stockJson != null) {
+      final List<dynamic> decoded = jsonDecode(stockJson);
+      setState(() {
+        stockData =
+            decoded
+                .map<Map<String, String>>((e) => Map<String, String>.from(e))
+                .toList();
+      });
+    }
+  }
+
+  Future<void> _savePreference(String key, String? value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value != null) {
+      await prefs.setString(key, value);
+    } else {
+      await prefs.remove(key);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final api = ApiService(widget.token);
 
     return Scaffold(
       appBar: AppBar(
@@ -65,56 +105,48 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.menu,
-              color: Color.fromARGB(255, 249, 0, 0),
-              size: 28,
-            ),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SearchBarSection(
-              selectedOption: selectedOption,
-              options: options,
-              onOptionChanged:
-                  (value) => setState(() => selectedOption = value!),
-              searchController: searchController,
-            ),
+          
             const SizedBox(height: 16),
             BranchAndProductCard(
               selectedBranch: selectedBranch,
-              onBranchChanged:
-                  (value) => setState(() => selectedBranch = value),
+              onBranchChanged: (value) {
+                setState(() => selectedBranch = value);
+                _savePreference("selectedBranch", value); // ✅ บันทึกค่า
+              },
               selectedProduct: selectedProduct,
               onProductChanged: (value) {
                 setState(() => selectedProduct = value);
-                if (value != null) {
-                  final code = value.split(' : ')[0];
-                
-                }
+                _savePreference("selectedProduct", value); // ✅ บันทึกค่า
               },
               selectedDocument: selectedDocument,
-              onDocumentChanged:
-                  (value) => setState(() => selectedDocument = value),
+              onDocumentChanged: (value) {
+                setState(() => selectedDocument = value);
+                _savePreference("selectedDocument", value); // ✅ บันทึกค่า
+              },
               selectedStorage: selectedStorage,
               storageList: storageList,
-              onStorageChanged:
-                  (value) => setState(() => selectedStorage = value),
+              onStorageChanged: (value) {
+                setState(() => selectedStorage = value);
+                _savePreference("selectedStorage", value); // ✅ บันทึกค่า
+              },
               apiToken: widget.token,
-              onAddItem: (productCode, location) {
+              onAddItem: (stockList) async {
+                setState(() {
+                  stockData = List<Map<String, String>>.from(stockList);
+                });
 
+                // บันทึกลง SharedPreferences
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('stockData', jsonEncode(stockData));
               },
             ),
-            const SizedBox(height: 16),
-   
+
             const SizedBox(height: 16),
             RecordInfoCard(
               employeeName: widget.empName,
@@ -145,23 +177,60 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder:
-                            (context) => SaveDialog(
-                              onCancel: () => Navigator.of(context).pop(),
-                              onConfirm: () {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
-                                  ),
-                                );
-                                print('บันทึกข้อมูลการตรวจนับสต๊อกเรียบร้อย');
-                              },
+                    onPressed: () async {
+                      if (stockData.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('กรุณาเพิ่มสินค้าก่อนบันทึก'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      // สร้าง payload สำหรับ API
+                      final payload = {
+                        "stockno": selectedDocument ?? '',
+                        "branchname": selectedBranch ?? '',
+                        "emp_fname": widget.empName,
+                        "stockItems":
+                            stockData
+                                .map(
+                                  (e) => {
+                                    "submodel_code": e['รหัสสินค้า'],
+                                    "location": e['ที่เก็บ'],
+                                    "qtycount":
+                                        int.tryParse(e['จำนวน'] ?? '0') ?? 0,
+                                  },
+                                )
+                                .toList(),
+                      };
+
+                      // ✅ เพิ่ม log
+                      print('---Payload for saveStock---');
+                      print(jsonEncode(payload));
+                      print('---------------------------');
+
+                      try {
+                        final success = await api.saveStock(payload);
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
                             ),
-                      );
+                          );
+                          setState(() {
+                            stockData.clear();
+                          });
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('บันทึกไม่สำเร็จ')),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFBF0000),

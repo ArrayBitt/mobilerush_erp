@@ -1,8 +1,6 @@
 import 'package:erp/dialog/save_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // เพิ่ม import
-
-import '../widgets/search_bar_section.dart';
 import '../widgets/branch_and_product_card.dart';
 
 import '../widgets/record_info_card.dart'; // <-- import ตัวใหม่
@@ -92,17 +90,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SearchBarSection(
-                    selectedOption: selectedOption,
-                    options: options,
-                    onOptionChanged: (value) {
-                      setState(() {
-                        selectedOption = value!;
-                      });
-                    },
-                    searchController: searchController,
-                  ),
-
+                
                  
 
                   const SizedBox(height: 16),
