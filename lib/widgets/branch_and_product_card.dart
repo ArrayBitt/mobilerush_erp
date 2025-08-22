@@ -475,54 +475,76 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                           children: [
                             // รหัสสินค้า (เดิม)
                             Expanded(
-                              child: InkWell(
-                                onTap: () async {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder:
-                                        (context) => AlertDialog(
-                                          title: const Text('ลบสินค้า'),
-                                          content: Text(
-                                            'คุณต้องการลบสินค้า ${data['รหัสสินค้า']} หรือไม่?',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed:
-                                                  () => Navigator.of(
-                                                    context,
-                                                  ).pop(false),
-                                              child: const Text('ยกเลิก'),
+                              child: Center(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder:
+                                          (context) => AlertDialog(
+                                            title: const Text(
+                                              'ลบสินค้า',
+                                              textAlign: TextAlign.center,
                                             ),
-                                            ElevatedButton(
-                                              onPressed:
-                                                  () => Navigator.of(
-                                                    context,
-                                                  ).pop(true),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.red,
+                                            content: Text(
+                                              'คุณต้องการลบสินค้า ${data['รหัสสินค้า']} หรือไม่?',
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            actionsAlignment:
+                                                MainAxisAlignment
+                                                    .center, // จัดปุ่มกลาง
+                                            actions: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .center, // จัดปุ่มกลาง
+                                                children: [
+                                                  TextButton(
+                                                    onPressed:
+                                                        () => Navigator.of(
+                                                          context,
+                                                        ).pop(false),
+                                                    child: const Text('ยกเลิก'),
+                                                  ),
+                                                  const SizedBox(width: 16),
+                                                  ElevatedButton(
+                                                    onPressed:
+                                                        () => Navigator.of(
+                                                          context,
+                                                        ).pop(true),
+                                                    style:
+                                                        ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                    child: const Text('ลบ'),
+                                                  ),
+                                                ],
                                               ),
-                                              child: const Text('ลบ'),
-                                            ),
-                                          ],
-                                        ),
-                                  );
+                                            ],
+                                          ),
+                                    );
 
-                                  if (confirm == true) {
-                                    setState(() {
-                                      stockData.removeAt(index);
-                                    });
-                                    saveStockData();
-                                    _notifyParent();
-                                  }
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Text(
-                                    data['รหัสสินค้า'] ?? '',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.blue,
-                                      decoration: TextDecoration.underline,
+                                    if (confirm == true) {
+                                      setState(() {
+                                        stockData.removeAt(index);
+                                      });
+                                      saveStockData();
+                                      _notifyParent();
+                                    }
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        data['รหัสสินค้า'] ?? '',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Colors.blue,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -579,7 +601,6 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                                 ),
                               ),
                             ),
-                           
 
                             // สแกน QR (เดิม) --> แก้เป็น:
                             Expanded(
@@ -639,10 +660,7 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                         ),
                       );
                     }).toList(),
-                    
                   ],
-                  
-                  
                 ),
               ),
           ],

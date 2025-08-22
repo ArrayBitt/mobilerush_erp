@@ -123,12 +123,32 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final result = json.decode(response.body);
-      // สมมติ API ส่ง success = true กลับมา
       return result['success'] == true;
     } else {
       throw Exception('Failed to save stock: ${response.statusCode}');
     }
   }
 
- 
+//motorcycle_stock_page
+  /// ดึงสินค้าทั้งหมด
+  Future<List<String>> fetchchassisno() async {
+    final url = Uri.parse(
+      'https://erp-dev.somjai.app/api/stockitems/getdatabychassisno?keyword=&token=',
+    );
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $apiToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => '${e['chassisno']}').toList();
+    } else {
+      throw Exception('Failed to load products: ${response.statusCode}');
+    }
+  }
 }

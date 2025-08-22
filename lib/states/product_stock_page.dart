@@ -92,7 +92,7 @@ class _ProductStockPageState extends State<ProductStockPage> {
                               context,
                               MaterialPageRoute(
                                 builder:
-                                    (context) => const MotorcycleStockPage(),
+                                    (context) => const MotorcycleStockPage(token: '', empName: '',),
                               ),
                             );
                           },

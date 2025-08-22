@@ -1,43 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class RecordCard extends StatefulWidget {
+class RecordCardMotor extends StatefulWidget {
   final String employeeName;
   final String initialRecordDate;
 
-  const RecordCard({
+  const RecordCardMotor({
     super.key,
     required this.employeeName,
     required this.initialRecordDate,
   });
 
   @override
-  State<RecordCard> createState() => _RecordCardState();
+  State<RecordCardMotor> createState() => _RecordCardMotorState();
 }
 
-class _RecordCardState extends State<RecordCard> {
-  late TextEditingController _employeeController;
-  late TextEditingController _dateController;
+class _RecordCardMotorState extends State<RecordCardMotor> {
+  late TextEditingController _employeeControllerMotor;
+  late TextEditingController _dateControllerMotor;
 
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
   @override
   void initState() {
     super.initState();
-    _employeeController = TextEditingController(text: widget.employeeName);
-    _dateController = TextEditingController(text: widget.initialRecordDate);
+    _employeeControllerMotor = TextEditingController(text: widget.employeeName);
+    _dateControllerMotor = TextEditingController(text: widget.initialRecordDate);
   }
 
   @override
   void dispose() {
-    _employeeController.dispose();
-    _dateController.dispose();
+    _employeeControllerMotor.dispose();
+    _dateControllerMotor.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate(BuildContext context) async {
     DateTime initialDate =
-        DateTime.tryParse(_dateController.text) ?? DateTime.now();
+        DateTime.tryParse(_dateControllerMotor.text) ?? DateTime.now();
 
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -49,7 +49,7 @@ class _RecordCardState extends State<RecordCard> {
 
     if (picked != null && picked != initialDate) {
       setState(() {
-        _dateController.text = _dateFormat.format(picked);
+        _dateControllerMotor.text = _dateFormat.format(picked);
       });
     }
   }
@@ -74,7 +74,7 @@ class _RecordCardState extends State<RecordCard> {
                 const SizedBox(height: 6),
                 TextField(
                   readOnly: true,
-                  controller: _employeeController,
+                  controller: _employeeControllerMotor,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     isDense: true,
@@ -95,7 +95,7 @@ class _RecordCardState extends State<RecordCard> {
                   onTap: () => _selectDate(context),
                   child: AbsorbPointer(
                     child: TextField(
-                      controller: _dateController,
+                      controller: _dateControllerMotor,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         isDense: true,

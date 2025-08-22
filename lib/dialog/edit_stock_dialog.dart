@@ -60,7 +60,10 @@ class _EditStockDialogState extends State<EditStockDialog> {
                 TextFormField(
                   initialValue: widget.productCode,
                   readOnly: true,
+                  cursorColor: Colors.grey,
                   decoration: InputDecoration(
+                    fillColor: Colors.grey.shade200,
+                    filled: true,
                     hintText: 'รหัสสินค้า',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -78,7 +81,9 @@ class _EditStockDialogState extends State<EditStockDialog> {
                       vertical: 14,
                     ),
                   ),
+                  style: const TextStyle(color: Colors.black54),
                 ),
+
               ],
             ),
 

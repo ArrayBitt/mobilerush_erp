@@ -111,7 +111,6 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          
             const SizedBox(height: 16),
             BranchAndProductCard(
               selectedBranch: selectedBranch,
@@ -209,7 +208,6 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                       print('---Payload for saveStock---');
                       print(jsonEncode(payload));
                       print('---------------------------');
-
                       try {
                         final success = await api.saveStock(payload);
                         if (success) {

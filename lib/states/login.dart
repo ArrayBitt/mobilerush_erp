@@ -34,12 +34,12 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ProductStockPage(token: token, empName: ''),
+          builder: (_) => ProductStockPage(token: token, empName:''),
         ),
       );
     }
   }
-
+ 
   Future<void> _login() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
@@ -62,6 +62,7 @@ class _LoginPageState extends State<LoginPage> {
         body: jsonEncode({"username": username, "password": password}),
       );
 
+      
       setState(() => _loading = false);
 
       if (response.statusCode == 200) {
@@ -69,6 +70,9 @@ class _LoginPageState extends State<LoginPage> {
 
         final token = data['access_token'] ?? '';
         final empName = data['emp_fname'] ?? '';
+
+          print("DEBUG: username : $empName");
+          print("DEBUG: token : $token");
 
         if (token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();
