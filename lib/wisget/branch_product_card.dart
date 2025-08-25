@@ -13,8 +13,8 @@ class BranchProductCardMotor extends StatefulWidget {
   final String? selectedBranchMotor;
   final ValueChanged<String?> onBranchChangedMotor;
 
-  final String? selectedProductMotor;
-  final ValueChanged<String?> onProductChangedMotor;
+  final String? selectedChasisnoMotor;
+  final ValueChanged<String?> onChasisnoChangedMotor;
 
   final String? selectedDocumentMotor;
   final ValueChanged<String?> onDocumentChangedMotor;
@@ -34,8 +34,8 @@ class BranchProductCardMotor extends StatefulWidget {
     super.key,
     required this.selectedBranchMotor,
     required this.onBranchChangedMotor,
-    required this.selectedProductMotor,
-    required this.onProductChangedMotor,
+    required this.selectedChasisnoMotor,
+    required this.onChasisnoChangedMotor,
     required this.selectedDocumentMotor,
     required this.onDocumentChangedMotor,
     required this.selectedStorageMotor,
@@ -58,31 +58,60 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
   String? currentBranchMotor;
   String? currentBranchDisplayMotor;
   String? currentLocationMotor;
-  String? currentProductMotor;
+  String? currentChasisnoMotor;
+  String? apiToken;
 
   List<String> documentListMotor = [];
   List<String> branchListMotor = [];
   List<String> locationListMotor = [];
-  List<String> productListMotor = [];
+  List<String> chasisnoListMotor = [];
 
   List<Map<String, String>> stockDataM = [];
 
   @override
   void initState() {
     super.initState();
-    apiService = ApiService(widget.apiToken);
+    _initApiTokenAndFetch(); // ✅ เรียกโหลด token และ fetch api
 
     currentDocumentMotor = widget.selectedDocumentMotor;
     currentBranchMotor = widget.selectedBranchMotor;
     currentBranchDisplayMotor =
         widget.selectedBranchMotor != null ? widget.selectedBranchMotor : null;
     currentLocationMotor = widget.selectedLocationMotor;
-    currentProductMotor = widget.selectedProductMotor;
+    chasisnoListMotor =
+        widget.selectedChasisnoMotor != null
+            ? [widget.selectedChasisnoMotor!]
+            : [];
 
-    fetchLocationsFromApi();
-    fetchProductsFromApi();
+    loadStockDataM(); // โหลด stockData จาก SharedPreferences
+  }
 
-    loadStockDataM();
+  Future<void> _initApiTokenAndFetch() async {
+    String token = widget.apiToken;
+
+    // fallback จาก SharedPreferences เผื่อว่าง
+    if (token.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('token') ?? '';
+    }
+
+    if (token.isEmpty) {
+      print('ERROR: No API token found!');
+      return; // ยังไม่เจอ token
+    }
+
+    print('DEBUG: Using apiToken = $token');
+
+    apiToken = token;
+    apiService = ApiService(apiToken!);
+
+    // ดึงข้อมูลจาก API
+    try {
+      await fetchLocationsFromApi();
+      await fetchProductsFromApi();
+    } catch (e) {
+      print('Error fetching initial data: $e');
+    }
   }
 
   // โหลด stockData จาก SharedPreferences
@@ -110,11 +139,11 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
 
   Future<void> fetchProductsFromApi() async {
     try {
-      final products = await apiService.fetchProducts();
+      final chasisno = await apiService.fetchchassisno();
       setState(() {
-        productListMotor = products;
+        chasisnoListMotor = chasisno;
       });
-      print('Fetched products: $productListMotor');
+      print('Fetched products: $chasisnoListMotor');
     } catch (e) {
       print('Error fetching products: $e');
     }
@@ -253,7 +282,9 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                   branchFull
                                       .split(' - ')
                                       .last; // ส่ง branch name
-                              branchListMotor = [branchFull]; // list ของ dropdown
+                              branchListMotor = [
+                                branchFull,
+                              ]; // list ของ dropdown
                             });
                             widget.onBranchChangedMotor(currentBranchMotor);
                           }
@@ -326,14 +357,14 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                     ),
                     const SizedBox(height: 8),
                     _buildDropdown(
-                      value: currentProductMotor,
-                      list: productListMotor,
+                      value: currentChasisnoMotor,
+                      list: chasisnoListMotor,
                       hint: 'เลือกเลขถัง',
                       onChanged: (value) {
                         setState(() {
-                          currentProductMotor = value;
+                          currentChasisnoMotor = value;
                         });
-                        widget.onProductChangedMotor(value);
+                        widget.onChasisnoChangedMotor(value);
                       },
                     ),
 
@@ -341,17 +372,17 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                     Center(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          if (currentProductMotor != null &&
+                          if (currentChasisnoMotor != null &&
                               currentLocationMotor != null) {
                             final onlyLocation =
                                 currentLocationMotor!.split(' - ').last.trim();
                             setState(() {
                               stockDataM.add({
-                                'เลขถัง': currentProductMotor!,
+                                'เลขถัง': currentChasisnoMotor!,
                                 'ที่เก็บ': onlyLocation,
                                 'จำนวน': '0',
                               });
-                              currentProductMotor = null;
+                              currentChasisnoMotor = null;
                               currentLocationMotor = null;
                             });
 

@@ -32,7 +32,7 @@ class ApiService {
   /// ดึงเอกสารโดยกรองด้วย keyword
   Future<List<String>> fetchDocuments(String filter) async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$filter',
+      'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=&token=$filter',
     );
 
     final response = await http.get(
@@ -129,11 +129,9 @@ class ApiService {
     }
   }
 
-//motorcycle_stock_page
-  /// ดึงสินค้าทั้งหมด
-  Future<List<String>> fetchchassisno() async {
+Future<List<String>> fetchchassisno() async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/stockitems/getdatabychassisno?keyword=&token=',
+      'https://erp-dev.somjai.app/api/stockitems/getdatabychassisno?keyword=',
     );
 
     final response = await http.get(
@@ -144,11 +142,19 @@ class ApiService {
       },
     );
 
+   
+    print('DEBUG: apiToken = $apiToken');
+    print('DEBUG: url = $url');
+    print('DEBUG: statusCode = ${response.statusCode}');
+    print('DEBUG: body = ${response.body}');
+
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       return data.map((e) => '${e['chassisno']}').toList();
     } else {
-      throw Exception('Failed to load products: ${response.statusCode}');
+      throw Exception('Failed to load chassisno: ${response.statusCode}');
     }
   }
+
+
 }

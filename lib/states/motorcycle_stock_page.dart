@@ -36,10 +36,31 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
 
   final TextEditingController searchController = TextEditingController();
 
+  late String _apiToken; // ✅ local variable สำหรับ ApiService
+
   @override
   void initState() {
     super.initState();
     _loadSavedPreferences();
+    _ensureToken(); // ✅ เพิ่มตรงนี้
+  }
+
+  /// โหลด token จาก SharedPreferences ถ้า widget.token ว่าง
+  Future<void> _ensureToken() async {
+    if (widget.token.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString('apiToken') ?? '';
+      if (savedToken.isNotEmpty) {
+        setState(() {
+          _apiToken = savedToken;
+        });
+      } else {
+        print('ERROR: No API token found!');
+        _apiToken = '';
+      }
+    } else {
+      _apiToken = widget.token;
+    }
   }
 
   Future<void> _loadSavedPreferences() async {
@@ -76,7 +97,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
   @override
   Widget build(BuildContext context) {
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final api = ApiService(widget.token);
+    final api = ApiService(_apiToken); // ✅ ใช้ _apiToken แทน widget.token
 
     return Scaffold(
       appBar: AppBar(
@@ -114,34 +135,32 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
           children: [
             const SizedBox(height: 16),
             BranchProductCardMotor(
+              apiToken: _apiToken, // ✅ ใช้ _apiToken
               selectedBranchMotor: selectedBranchMotor,
               onBranchChangedMotor: (value) {
                 setState(() => selectedBranchMotor = value);
-                _savePreference("selectedBranch", value); // ✅ บันทึกค่า
+                _savePreference("selectedBranch", value);
               },
-              selectedProductMotor: selectedProductMotor,
-              onProductChangedMotor: (value) {
+              selectedChasisnoMotor: selectedProductMotor,
+              onChasisnoChangedMotor: (value) {
                 setState(() => selectedProductMotor = value);
-                _savePreference("selectedProduct", value); // ✅ บันทึกค่า
+                _savePreference("selectedProduct", value);
               },
               selectedDocumentMotor: selectedDocumentMotor,
               onDocumentChangedMotor: (value) {
                 setState(() => selectedDocumentMotor = value);
-                _savePreference("selectedDocument", value); // ✅ บันทึกค่า
+                _savePreference("selectedDocument", value);
               },
               selectedStorageMotor: selectedStorageMotor,
               storageListMotor: storageListMotor,
               onStorageChangedMotor: (value) {
                 setState(() => selectedStorageMotor = value);
-                _savePreference("selectedStorage", value); // ✅ บันทึกค่า
+                _savePreference("selectedStorage", value);
               },
-              apiToken: widget.token,
               onAddItemMotor: (stockList) async {
                 setState(() {
                   stockDataM = List<Map<String, String>>.from(stockList);
                 });
-
-                // บันทึกลง SharedPreferences
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('stockData', jsonEncode(stockDataM));
               },
@@ -187,7 +206,6 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                         return;
                       }
 
-                      // สร้าง payload สำหรับ API
                       final payload = {
                         "stockno": selectedDocumentMotor ?? '',
                         "branchname": selectedBranchMotor ?? '',
@@ -196,7 +214,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                             stockDataM
                                 .map(
                                   (e) => {
-                                    "submodel_code": e['เลขถัง'],
+                                    "stockno": e['เลขถัง'],
                                     "location": e['ที่เก็บ'],
                                     "qtycount":
                                         int.tryParse(e['จำนวน'] ?? '0') ?? 0,
@@ -205,7 +223,6 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                                 .toList(),
                       };
 
-                      // ✅ เพิ่ม log
                       print('---Payload for saveStock---');
                       print(jsonEncode(payload));
                       print('---------------------------');
