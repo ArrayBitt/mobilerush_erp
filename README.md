@@ -1,4 +1,4 @@
-# erp
+# stock_count
 
 A new Flutter project.
 

@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'package:erp/wisget/branch_product_card.dart';
-import 'package:erp/wisget/record_card.dart';
+import 'package:stock_count/wisget/branch_product_card.dart';
+import 'package:stock_count/wisget/record_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // ✅ เพิ่ม import
-
+import 'package:http/http.dart' as http;
 import '../dialog/save_dialog.dart';
 import '../service/api_service.dart';
 
@@ -33,6 +33,8 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
   List<String> storageListMotor = [];
 
   List<Map<String, String>> stockDataM = [];
+  String? mstStockId;
+  String? inventoryCheckId;
 
   final TextEditingController searchController = TextEditingController();
 
@@ -94,10 +96,45 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
     }
   }
 
+  Future<void> _fetchMstStockId(String docNo) async {
+    final url = Uri.parse(
+      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$docNo&token=${widget.token}',
+    );
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is List && data.isNotEmpty) {
+          final first = data[0];
+
+          mstStockId = first['mststockid'].toString();
+
+          final inventoryList = first['inventoryCheck'] as List?;
+          if (inventoryList != null && inventoryList.isNotEmpty) {
+            inventoryCheckId =
+                inventoryList.first['inventory_check_id'].toString();
+          } else {
+            inventoryCheckId = null;
+          }
+
+          setState(() {});
+        } else {
+          mstStockId = null;
+          inventoryCheckId = null;
+        }
+      } else {
+        print('Failed to fetch stock data. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching stock data: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final api = ApiService(_apiToken); // ✅ ใช้ _apiToken แทน widget.token
+    final api = ApiService(_apiToken); 
 
     return Scaffold(
       appBar: AppBar(
@@ -135,7 +172,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
           children: [
             const SizedBox(height: 16),
             BranchProductCardMotor(
-              apiToken: _apiToken, // ✅ ใช้ _apiToken
+              apiToken: _apiToken, 
               selectedBranchMotor: selectedBranchMotor,
               onBranchChangedMotor: (value) {
                 setState(() => selectedBranchMotor = value);
@@ -195,56 +232,85 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton(
+                 ElevatedButton(
                     onPressed: () async {
+                      final timestamp = DateTime.now().toIso8601String();
+
                       if (stockDataM.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('กรุณาเพิ่มสินค้าก่อนบันทึก'),
-                          ),
+                        _showCustomPopup(
+                          title: 'แจ้งเตือน',
+                          message: 'กรุณาเพิ่มสินค้าก่อนบันทึก',
+                          success: false,
                         );
                         return;
                       }
 
-                      final payload = {
-                        "stockno": selectedDocumentMotor ?? '',
-                        "branchname": selectedBranchMotor ?? '',
-                        "emp_fname": widget.empName,
-                        "stockItems":
-                            stockDataM
-                                .map(
-                                  (e) => {
-                                    "stockno": e['เลขถัง'],
-                                    "location": e['ที่เก็บ'],
-                                    "qtycount":
-                                        int.tryParse(e['จำนวน'] ?? '0') ?? 0,
-                                  },
-                                )
-                                .toList(),
-                      };
+                      if (mstStockId == null) {
+                        _showCustomPopup(
+                          title: 'แจ้งเตือน',
+                          message: 'ไม่พบ mststockid สำหรับเลขเอกสารนี้',
+                          success: false,
+                        );
+                        return;
+                      }
 
-                      print('---Payload for saveStock---');
-                      print(jsonEncode(payload));
-                      print('---------------------------');
+                      final inventoryCheck =
+                          stockDataM
+                              .map((e) {
+                                final qty = int.tryParse(
+                                  e['จำนวน']?.trim() ?? '',
+                                );
+                                if (qty == null || qty <= 0) return null;
+                                return {
+                                  "inventory_check_id":
+                                      inventoryCheckId, // ✅ เพิ่มเข้าไปในแต่ละ item
+                                  "submodel_code": e['รหัสสินค้า']?.trim(),
+                                  "location": e['ที่เก็บ']?.trim() ?? '00',
+                                  "qtycount": qty,
+                                };
+                              })
+                              .where((e) => e != null)
+                              .cast<Map<String, dynamic>>()
+                              .toList();
+
+                      print("DEBUG: stockItemsPatch = $inventoryCheck");
+
+                      if (inventoryCheck.isEmpty) {
+                        _showCustomPopup(
+                          title: 'แจ้งเตือน',
+                          message: 'ไม่มีข้อมูลที่จะอัปเดต',
+                          success: false,
+                        );
+                        return;
+                      }
+
                       try {
-                        final success = await api.saveStock(payload);
+                        final api = ApiService(widget.token);
+
+                        final success = await api.patchInventoryCheckUpdate(
+                          mstStockId!,
+                          inventoryCheck,
+                        );
+
                         if (success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('บันทึกข้อมูลเรียบร้อยแล้ว'),
-                            ),
+                          _showCustomPopup(
+                            title: 'สำเร็จ',
+                            message: 'บันทึกและอัปเดตข้อมูลเรียบร้อยแล้ว',
+                            success: true,
                           );
                           setState(() {
                             stockDataM.clear();
+                            mstStockId = null;
                           });
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('บันทึกไม่สำเร็จ')),
-                          );
                         }
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+                        print(
+                          "[$timestamp] PATCH request exception ❌ Error: $e",
+                        );
+                        _showCustomPopup(
+                          title: 'ล้มเหลว',
+                          message: 'updateInventoryCheck ไม่สำเร็จ: $e',
+                          success: false,
                         );
                       }
                     },
@@ -271,4 +337,82 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
       ),
     );
   }
+  void _showCustomPopup({
+    required String title,
+    required String message,
+    required bool success,
+  }) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            elevation: 10,
+            backgroundColor: Colors.white,
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.8,
+              height: MediaQuery.of(context).size.height * 0.35,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: success ? Colors.green : Colors.red,
+                      child: Icon(
+                        success ? Icons.check : Icons.close,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: success ? Colors.green[700] : Colors.red[700],
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: SingleChildScrollView(
+                          child: Text(
+                            message,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: success ? Colors.green : Colors.red,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'ตกลง',
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+    );
+  }
+  
 }

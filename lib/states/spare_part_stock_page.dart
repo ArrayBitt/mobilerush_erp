@@ -33,7 +33,8 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
   List<String> storageList = [];
 
   List<Map<String, String>> stockData = [];
-  String? mstStockId; // ✅ เก็บค่า mststockid
+  String? mstStockId;
+  String? inventoryCheckId;
 
   final TextEditingController searchController = TextEditingController();
 
@@ -72,11 +73,9 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
       await prefs.remove(key);
     }
   }
-
-  // ✅ ดึง mststockid จากเลขเอกสาร
-  Future<void> _fetchMstStockId(String docNo) async {
+Future<void> _fetchMstStockId(String docNo) async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$docNo&token=${widget.token}',
+      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$docNo&token=${widget.token}',
     );
 
     try {
@@ -84,17 +83,28 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data is List && data.isNotEmpty) {
-          setState(() {
-            mstStockId = data[0]['mststockid'].toString();
-          });
+          final first = data[0];
+
+          mstStockId = first['mststockid'].toString();
+
+          final inventoryList = first['inventoryCheck'] as List?;
+          if (inventoryList != null && inventoryList.isNotEmpty) {
+            inventoryCheckId =
+                inventoryList.first['inventory_check_id'].toString();
+          } else {
+            inventoryCheckId = null;
+          }
+
+          setState(() {});
         } else {
           mstStockId = null;
+          inventoryCheckId = null;
         }
       } else {
-        print('Failed to fetch mststockid. Status: ${response.statusCode}');
+        print('Failed to fetch stock data. Status: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching mststockid: $e');
+      print('Error fetching stock data: $e');
     }
   }
 
@@ -201,8 +211,10 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                 ElevatedButton(
+                   ElevatedButton(
                     onPressed: () async {
+                      final timestamp = DateTime.now().toIso8601String();
+
                       if (stockData.isEmpty) {
                         _showCustomPopup(
                           title: 'แจ้งเตือน',
@@ -221,62 +233,45 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                         return;
                       }
 
-                      final payload = {
-                        "stockno": selectedDocument ?? '',
-                        "mststockid": mstStockId,
-                        "branchname": selectedBranch ?? '',
-                        "emp_fname": widget.empName,
-                        "stockItems":
-                            stockData
-                                .map(
-                                  (e) => {
-                                    "stockno": e['รหัสสินค้า'],
-                                    "location": e['ที่เก็บ'],
-                                    "qtycount":
-                                        int.tryParse(e['จำนวน'] ?? '0') ?? 0,
-                                  },
-                                )
-                                .toList(),
-                      };
+                      final inventoryCheck =
+                          stockData
+                              .map((e) {
+                                final qty = int.tryParse(
+                                  e['จำนวน']?.trim() ?? '',
+                                );
+                                if (qty == null || qty <= 0) return null;
+                                return {
+                                  "inventory_check_id":
+                                      inventoryCheckId, // ✅ เพิ่มเข้าไปในแต่ละ item
+                                  "submodel_code": e['รหัสสินค้า']?.trim(),
+                                  "location": e['ที่เก็บ']?.trim() ?? '00',
+                                  "qtycount": qty,
+                                };
+                              })
+                              .where((e) => e != null)
+                              .cast<Map<String, dynamic>>()
+                              .toList();
+
+                      print("DEBUG: stockItemsPatch = $inventoryCheck");
+
+                      if (inventoryCheck.isEmpty) {
+                        _showCustomPopup(
+                          title: 'แจ้งเตือน',
+                          message: 'ไม่มีข้อมูลที่จะอัปเดต',
+                          success: false,
+                        );
+                        return;
+                      }
 
                       try {
-                        // 1️⃣ saveStock API
-                        final success = await api.saveStock(payload);
-                        if (!success) {
-                          _showCustomPopup(
-                            title: 'ล้มเหลว',
-                            message: 'ไม่สามารถบันทึกข้อมูลได้',
-                            success: false,
-                          );
-                          return;
-                        }
+                        final api = ApiService(widget.token);
 
-                        // 2️⃣ PATCH updateInventoryCheck
-                        final patchUrl = Uri.parse(
-                          'https://erp-dev.somjai.app/api/mststocks/updateInventoryCheck/?token=${widget.token}',
-                        );
-                        final patchBody = jsonEncode({
-                          "mststockid": mstStockId,
-                          "stockItems":
-                              stockData
-                                  .map(
-                                    (e) => {
-                                      "stockno": e['รหัสสินค้า'],
-                                      "location": e['ที่เก็บ'],
-                                      "qtycount":
-                                          int.tryParse(e['จำนวน'] ?? '0') ?? 0,
-                                    },
-                                  )
-                                  .toList(),
-                        });
-
-                        final patchResponse = await http.patch(
-                          patchUrl,
-                          headers: {'Content-Type': 'application/json'},
-                          body: patchBody,
+                        final success = await api.patchInventoryCheckUpdate(
+                          mstStockId!,
+                          inventoryCheck,
                         );
 
-                        if (patchResponse.statusCode == 200) {
+                        if (success) {
                           _showCustomPopup(
                             title: 'สำเร็จ',
                             message: 'บันทึกและอัปเดตข้อมูลเรียบร้อยแล้ว',
@@ -286,18 +281,14 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                             stockData.clear();
                             mstStockId = null;
                           });
-                        } else {
-                          _showCustomPopup(
-                            title: 'ล้มเหลว',
-                            message:
-                                'บันทึกสำเร็จแต่ updateInventoryCheck ไม่สำเร็จ: ${patchResponse.statusCode}',
-                            success: false,
-                          );
                         }
                       } catch (e) {
+                        print(
+                          "[$timestamp] PATCH request exception ❌ Error: $e",
+                        );
                         _showCustomPopup(
-                          title: 'ข้อผิดพลาด',
-                          message: 'เกิดข้อผิดพลาด: $e',
+                          title: 'ล้มเหลว',
+                          message: 'updateInventoryCheck ไม่สำเร็จ: $e',
                           success: false,
                         );
                       }
@@ -316,8 +307,7 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                       'บันทึก',
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
-                  )
-
+                  ),
                 ],
               ),
             ),
@@ -326,6 +316,7 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
       ),
     );
   }
+
   void _showCustomPopup({
     required String title,
     required String message,
@@ -403,6 +394,4 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
           ),
     );
   }
-
 }
-

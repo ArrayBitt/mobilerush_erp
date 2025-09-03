@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:erp/dialog/edit_stock_dialog.dart';
-import 'package:erp/dialog/scan_result_dialog.dart';
-import 'package:erp/states/mobile_scanner.dart';
+import 'package:stock_count/dialog/edit_stock_dialog.dart';
+import 'package:stock_count/dialog/scan_result_dialog.dart';
+import 'package:stock_count/states/mobile_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:shared_preferences/shared_preferences.dart';

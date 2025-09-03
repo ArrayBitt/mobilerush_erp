@@ -1,4 +1,4 @@
-import 'package:erp/states/product_stock_page.dart';
+import 'package:stock_count/states/product_stock_page.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;

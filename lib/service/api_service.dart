@@ -10,7 +10,7 @@ class ApiService {
   /// ดึงสินค้าทั้งหมด
   Future<List<String>> fetchProducts() async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/submodels/getAllBysearchSparecheckstock?keyword=',
+      'https://erp-uat.somjai.app/api/submodels/getAllBysearchSparecheckstock?keyword=',
     );
 
     final response = await http.get(
@@ -32,7 +32,7 @@ class ApiService {
   /// ดึงเอกสารโดยกรองด้วย keyword
   Future<List<String>> fetchDocuments(String filter) async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=&token=$filter',
+      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=&token=$filter',
     );
 
     final response = await http.get(
@@ -57,7 +57,7 @@ class ApiService {
   /// ดึงสาขาของเอกสาร
   Future<String?> fetchBranchByDocument(String stockno) async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$stockno',
+      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$stockno',
     );
 
     final response = await http.get(
@@ -83,7 +83,7 @@ class ApiService {
   /// ดึงตำแหน่งที่เก็บทั้งหมด
   Future<List<String>> fetchLocations() async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/locationitems/getAllLocationByselect',
+      'https://erp-uat.somjai.app/api/locationitems/getAllLocationByselect',
     );
 
     final response = await http.get(
@@ -106,32 +106,51 @@ class ApiService {
     }
   }
 
-  /// บันทึกสต๊อกใหม่
-  Future<bool> saveStock(Map<String, dynamic> payload) async {
+  Future<bool> patchInventoryCheckUpdate(
+    String mstStockId,
+    List<Map<String, dynamic>>
+    inventoryCheck, // เปลี่ยนชื่อ stockItems → inventoryCheck
+  ) async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/sparestocks/saveStock',
+      'https://erp-uat.somjai.app/api/mststocks/updateInventoryCheck/$mstStockId',
     );
 
-    final response = await http.post(
+    final mstStockIdInt = int.tryParse(mstStockId);
+    if (mstStockIdInt == null) {
+      throw Exception('mstStockId ไม่ถูกต้อง');
+    }
+
+    final body = jsonEncode({
+      "mststockid": mstStockIdInt,
+      "dtl_stock_items":
+          inventoryCheck,
+    });
+
+    print("DEBUG patchInventoryCheckUpdate URL: $url");
+    print("DEBUG patchInventoryCheckUpdate body: $body");
+
+    final response = await http.patch(
       url,
       headers: {
         'Authorization': 'Bearer $apiToken',
         'Content-Type': 'application/json',
       },
-      body: json.encode(payload),
+      body: body,
     );
 
-    if (response.statusCode == 200) {
-      final result = json.decode(response.body);
-      return result['success'] == true;
-    } else {
-      throw Exception('Failed to save stock: ${response.statusCode}');
-    }
+    print("DEBUG patchInventoryCheckUpdate status: ${response.statusCode}");
+    print("DEBUG patchInventoryCheckUpdate response: ${response.body}");
+
+    if (response.statusCode == 200) return true;
+
+    throw Exception(
+      'Failed to patchInventoryCheckUpdate: ${response.statusCode}',
+    );
   }
 
-Future<List<String>> fetchchassisno() async {
+  Future<List<String>> fetchchassisno() async {
     final url = Uri.parse(
-      'https://erp-dev.somjai.app/api/stockitems/getdatabychassisno?keyword=',
+      'https://erp-uat.somjai.app/api/stockitems/getdatabychassisno?keyword=',
     );
 
     final response = await http.get(
@@ -142,7 +161,6 @@ Future<List<String>> fetchchassisno() async {
       },
     );
 
-   
     print('DEBUG: apiToken = $apiToken');
     print('DEBUG: url = $url');
     print('DEBUG: statusCode = ${response.statusCode}');
@@ -155,6 +173,4 @@ Future<List<String>> fetchchassisno() async {
       throw Exception('Failed to load chassisno: ${response.statusCode}');
     }
   }
-
-
 }

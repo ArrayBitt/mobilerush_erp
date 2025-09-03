@@ -1,6 +1,6 @@
 {
-    "name": "erp",
-    "short_name": "erp",
+    "name": "stock_count",
+    "short_name": "stock_count",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

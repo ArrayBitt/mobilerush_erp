@@ -1,4 +1,4 @@
-import 'package:erp/states/spare_part_stock_page.dart';
+import 'package:stock_count/states/spare_part_stock_page.dart';
 import 'package:flutter/material.dart';
 import 'motorcycle_stock_page.dart'; // เพิ่ม import หน้าเป้าหมาย
 

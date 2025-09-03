@@ -1,6 +1,6 @@
-import 'package:erp/states/login.dart';
-import 'package:erp/states/product_stock_page.dart';
-import 'package:erp/states/spare_part_stock_page.dart';
+import 'package:stock_count/states/login.dart';
+import 'package:stock_count/states/product_stock_page.dart';
+import 'package:stock_count/states/spare_part_stock_page.dart';
 import 'package:flutter/material.dart';
 
 // เพิ่ม import สำหรับ localization
