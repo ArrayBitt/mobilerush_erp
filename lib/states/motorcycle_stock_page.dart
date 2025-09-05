@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'package:stock_count/wisget/branch_product_card.dart';
-import 'package:stock_count/wisget/record_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // ✅ เพิ่ม import
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http; 
+import 'package:stock_count/wisget/branch_product_card.dart';
+import 'package:stock_count/wisget/record_card.dart';
 import '../dialog/save_dialog.dart';
 import '../service/api_service.dart';
+
 
 class MotorcycleStockPage extends StatefulWidget {
   final String token;
@@ -26,60 +27,38 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
   String selectedOption = 'ค้นหาจาก';
   final List<String> options = ['ค้นหาจาก', 'รหัส', 'ชื่อ', 'หมวดหมู่'];
 
-  String? selectedBranchMotor;
-  String? selectedProductMotor;
-  String? selectedDocumentMotor;
-  String? selectedStorageMotor;
-  List<String> storageListMotor = [];
+  String? selectedBranch;
+  String? selectedProduct;
+  String? selectedDocument;
+  String? selectedStorage;
+  List<String> storageList = [];
 
-  List<Map<String, String>> stockDataM = [];
+  List<Map<String, String>> stockData = [];
   String? mstStockId;
   String? inventoryCheckId;
 
   final TextEditingController searchController = TextEditingController();
 
-  late String _apiToken; // ✅ local variable สำหรับ ApiService
-
   @override
   void initState() {
     super.initState();
     _loadSavedPreferences();
-    _ensureToken(); // ✅ เพิ่มตรงนี้
-  }
-
-  /// โหลด token จาก SharedPreferences ถ้า widget.token ว่าง
-  Future<void> _ensureToken() async {
-    if (widget.token.isEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      final savedToken = prefs.getString('apiToken') ?? '';
-      if (savedToken.isNotEmpty) {
-        setState(() {
-          _apiToken = savedToken;
-        });
-      } else {
-        print('ERROR: No API token found!');
-        _apiToken = '';
-      }
-    } else {
-      _apiToken = widget.token;
-    }
   }
 
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      selectedBranchMotor = prefs.getString("selectedBranch");
-      selectedProductMotor = prefs.getString("selectedProduct");
-      selectedDocumentMotor = prefs.getString("selectedDocument");
-      selectedStorageMotor = prefs.getString("selectedStorage");
+      selectedBranch = prefs.getString("selectedBranch");
+      selectedProduct = prefs.getString("selectedProduct");
+      selectedDocument = prefs.getString("selectedDocument");
+      selectedStorage = prefs.getString("selectedStorage");
     });
 
-    // โหลด stockData
     final stockJson = prefs.getString('stockData');
     if (stockJson != null) {
       final List<dynamic> decoded = jsonDecode(stockJson);
       setState(() {
-        stockDataM =
+        stockData =
             decoded
                 .map<Map<String, String>>((e) => Map<String, String>.from(e))
                 .toList();
@@ -134,7 +113,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
   @override
   Widget build(BuildContext context) {
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final api = ApiService(_apiToken); 
+    final api = ApiService(widget.token);
 
     return Scaffold(
       appBar: AppBar(
@@ -154,7 +133,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
             ),
             const SizedBox(width: 10),
             const Text(
-              'Motorcycle stock',
+              'Motorcyclestock',
               style: TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 16,
@@ -172,37 +151,39 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
           children: [
             const SizedBox(height: 16),
             BranchProductCardMotor(
-              apiToken: _apiToken, 
-              selectedBranchMotor: selectedBranchMotor,
-              onBranchChangedMotor: (value) {
-                setState(() => selectedBranchMotor = value);
+              selectedBranchMortor: selectedBranch,
+              onBranchChangedMortor: (value) {
+                setState(() => selectedBranch = value);
                 _savePreference("selectedBranch", value);
               },
-              selectedChasisnoMotor: selectedProductMotor,
-              onChasisnoChangedMotor: (value) {
-                setState(() => selectedProductMotor = value);
+              selectedProductMortor: selectedProduct,
+              onProductChangedMortor: (value) {
+                setState(() => selectedProduct = value);
                 _savePreference("selectedProduct", value);
               },
-              selectedDocumentMotor: selectedDocumentMotor,
-              onDocumentChangedMotor: (value) {
-                setState(() => selectedDocumentMotor = value);
+              selectedDocumentMortor: selectedDocument,
+              onDocumentChangedMortor: (value) async {
+                setState(() => selectedDocument = value);
                 _savePreference("selectedDocument", value);
+                if (value != null && value.isNotEmpty) {
+                  await _fetchMstStockId(value); // ✅ ดึง mststockid
+                }
               },
-              selectedStorageMotor: selectedStorageMotor,
-              storageListMotor: storageListMotor,
-              onStorageChangedMotor: (value) {
-                setState(() => selectedStorageMotor = value);
+              selectedStorageMortor: selectedStorage,
+              storageListMortor: storageList,
+              onStorageChangedMortor: (value) {
+                setState(() => selectedStorage = value);
                 _savePreference("selectedStorage", value);
               },
-              onAddItemMotor: (stockList) async {
+              apiToken: widget.token,
+              onAddItem: (stockList) async {
                 setState(() {
-                  stockDataM = List<Map<String, String>>.from(stockList);
+                  stockData = List<Map<String, String>>.from(stockList);
                 });
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('stockData', jsonEncode(stockDataM));
+                await prefs.setString('stockData', jsonEncode(stockData));
               },
             ),
-
             const SizedBox(height: 16),
             RecordCardMotor(
               employeeName: widget.empName,
@@ -232,11 +213,11 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                 ElevatedButton(
+                  ElevatedButton(
                     onPressed: () async {
                       final timestamp = DateTime.now().toIso8601String();
 
-                      if (stockDataM.isEmpty) {
+                      if (stockData.isEmpty) {
                         _showCustomPopup(
                           title: 'แจ้งเตือน',
                           message: 'กรุณาเพิ่มสินค้าก่อนบันทึก',
@@ -255,7 +236,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                       }
 
                       final inventoryCheck =
-                          stockDataM
+                          stockData
                               .map((e) {
                                 final qty = int.tryParse(
                                   e['จำนวน']?.trim() ?? '',
@@ -299,7 +280,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                             success: true,
                           );
                           setState(() {
-                            stockDataM.clear();
+                            stockData.clear();
                             mstStockId = null;
                           });
                         }
@@ -337,6 +318,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
       ),
     );
   }
+
   void _showCustomPopup({
     required String title,
     required String message,
@@ -414,5 +396,4 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
           ),
     );
   }
-  
 }

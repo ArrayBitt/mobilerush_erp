@@ -73,9 +73,10 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
       await prefs.remove(key);
     }
   }
-Future<void> _fetchMstStockId(String docNo) async {
+
+  Future<void> _fetchMstStockId(String docNo) async {
     final url = Uri.parse(
-      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$docNo&token=${widget.token}',
+      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckSparpath?keyword=$docNo&token=${widget.token}',
     );
 
     try {
@@ -107,6 +108,7 @@ Future<void> _fetchMstStockId(String docNo) async {
       print('Error fetching stock data: $e');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +213,7 @@ Future<void> _fetchMstStockId(String docNo) async {
                     ),
                   ),
                   const SizedBox(width: 12),
-                   ElevatedButton(
+                  ElevatedButton(
                     onPressed: () async {
                       final timestamp = DateTime.now().toIso8601String();
 

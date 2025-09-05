@@ -122,7 +122,7 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
 
   Future<List<String>> fetchDocuments(String filter) async {
     try {
-      final docs = await apiService.fetchDocuments(filter);
+      final docs = await apiService.fetchDocumentspare(filter);
       documentList = docs;
       return docs;
     } catch (e) {
@@ -133,7 +133,7 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
 
   Future<String?> fetchBranchByDocument(String stockno) async {
     try {
-      final branch = await apiService.fetchBranchByDocument(stockno);
+      final branch = await apiService.fetchBranchByDocumentspare(stockno);
       return branch;
     } catch (e) {
       print('Error fetching branch: $e');
@@ -214,17 +214,41 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                     const SizedBox(height: 8),
                     DropdownSearch<String>(
                       selectedItem: currentDocument,
+                      asyncItems: fetchDocuments,
+                      filterFn: (item, filter) {
+                        if (filter.isEmpty) return true;
+                        final last4 =
+                            item.length >= 4
+                                ? item.substring(item.length - 4)
+                                : item;
+                        return last4.contains(filter);
+                      },
+                      onChanged: (value) async {
+                        setState(() {
+                          currentDocument = value;
+                        });
+                        widget.onDocumentChanged(value);
+
+                        if (value != null) {
+                          final branchFull = await fetchBranchByDocument(value);
+                          if (branchFull != null) {
+                            setState(() {
+                              currentBranchDisplay = branchFull;
+                              currentBranch = branchFull.split(' - ').last;
+                              branchList = [branchFull];
+                            });
+                            widget.onBranchChanged(currentBranch);
+                          }
+                        }
+                      },
                       popupProps: PopupProps.menu(
                         showSearchBox: true,
                         searchFieldProps: const TextFieldProps(
                           decoration: InputDecoration(
-                            hintText: 'พิมพ์เพื่อค้นหาเอกสาร',
+                            hintText: 'พิมพ์เลข 4 ตัวท้ายเอกสาร',
                             fillColor: Colors.white,
                             filled: true,
                           ),
-                        ),
-                        menuProps: const MenuProps(
-                          backgroundColor: Colors.white,
                         ),
                       ),
                       dropdownDecoratorProps: const DropDownDecoratorProps(
@@ -236,29 +260,6 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                           filled: true,
                         ),
                       ),
-                      asyncItems: fetchDocuments,
-                      onChanged: (value) async {
-                        setState(() {
-                          currentDocument = value;
-                        });
-                        widget.onDocumentChanged(value);
-
-                        if (value != null) {
-                          final branchFull = await fetchBranchByDocument(value);
-                          if (branchFull != null) {
-                            setState(() {
-                              currentBranchDisplay =
-                                  branchFull; // แสดง dropdown
-                              currentBranch =
-                                  branchFull
-                                      .split(' - ')
-                                      .last; // ส่ง branch name
-                              branchList = [branchFull]; // list ของ dropdown
-                            });
-                            widget.onBranchChanged(currentBranch);
-                          }
-                        }
-                      },
                     ),
 
                     const SizedBox(height: 8),
@@ -300,16 +301,42 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildDropdown(
-                      value: currentLocation,
-                      list: locationList,
-                      hint: 'เลือกที่เก็บ',
+                    DropdownSearch<String>(
+                      selectedItem: currentLocation,
+                      items: locationList,
+                      filterFn: (item, filter) {
+                        if (filter.isEmpty) return true;
+                        final last2 =
+                            item.length >= 2
+                                ? item.substring(item.length - 2)
+                                : item;
+                        return last2.contains(filter);
+                      },
                       onChanged: (value) {
                         setState(() {
                           currentLocation = value;
                         });
                         widget.onLocationChanged?.call(value);
                       },
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'พิมพ์เลข 2 ตัวท้ายที่เก็บ',
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                        ),
+                      ),
+                      dropdownDecoratorProps: const DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          hintText: 'เลือกที่เก็บ',
+                          fillColor: Colors.white,
+                          filled: true,
+                        ),
+                      ),
                     ),
 
                     // รหัสสินค้า
@@ -325,16 +352,42 @@ class _BranchAndProductCardState extends State<BranchAndProductCard> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildDropdown(
-                      value: currentProduct,
-                      list: productList,
-                      hint: 'เลือกสินค้า',
+                    DropdownSearch<String>(
+                      selectedItem: currentProduct,
+                      items: productList,
+                      filterFn: (item, filter) {
+                        if (filter.isEmpty) return true;
+                        final last4 =
+                            item.length >= 4
+                                ? item.substring(item.length - 4)
+                                : item;
+                        return last4.contains(filter);
+                      },
                       onChanged: (value) {
                         setState(() {
                           currentProduct = value;
                         });
                         widget.onProductChanged(value);
                       },
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'พิมพ์เลข 4 ตัวท้ายรหัสสินค้า',
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                        ),
+                      ),
+                      dropdownDecoratorProps: const DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          hintText: 'เลือกสินค้า',
+                          fillColor: Colors.white,
+                          filled: true,
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 12),

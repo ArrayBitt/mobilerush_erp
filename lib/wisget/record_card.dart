@@ -16,28 +16,28 @@ class RecordCardMotor extends StatefulWidget {
 }
 
 class _RecordCardMotorState extends State<RecordCardMotor> {
-  late TextEditingController _employeeControllerMotor;
-  late TextEditingController _dateControllerMotor;
+  late TextEditingController _employeeController;
+  late TextEditingController _dateController;
 
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
   @override
   void initState() {
     super.initState();
-    _employeeControllerMotor = TextEditingController(text: widget.employeeName);
-    _dateControllerMotor = TextEditingController(text: widget.initialRecordDate);
+    _employeeController = TextEditingController(text: widget.employeeName);
+    _dateController = TextEditingController(text: widget.initialRecordDate);
   }
 
   @override
   void dispose() {
-    _employeeControllerMotor.dispose();
-    _dateControllerMotor.dispose();
+    _employeeController.dispose();
+    _dateController.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate(BuildContext context) async {
     DateTime initialDate =
-        DateTime.tryParse(_dateControllerMotor.text) ?? DateTime.now();
+        DateTime.tryParse(_dateController.text) ?? DateTime.now();
 
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -49,7 +49,7 @@ class _RecordCardMotorState extends State<RecordCardMotor> {
 
     if (picked != null && picked != initialDate) {
       setState(() {
-        _dateControllerMotor.text = _dateFormat.format(picked);
+        _dateController.text = _dateFormat.format(picked);
       });
     }
   }
@@ -74,7 +74,7 @@ class _RecordCardMotorState extends State<RecordCardMotor> {
                 const SizedBox(height: 6),
                 TextField(
                   readOnly: true,
-                  controller: _employeeControllerMotor,
+                  controller: _employeeController,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     isDense: true,
@@ -95,7 +95,7 @@ class _RecordCardMotorState extends State<RecordCardMotor> {
                   onTap: () => _selectDate(context),
                   child: AbsorbPointer(
                     child: TextField(
-                      controller: _dateControllerMotor,
+                      controller: _dateController,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         isDense: true,

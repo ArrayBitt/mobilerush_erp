@@ -54,7 +54,7 @@ class ApiService {
     }
   }
 
-  /// ดึงสาขาของเอกสาร
+  /// ดึงสาขาของเอกสารรถ
   Future<String?> fetchBranchByDocument(String stockno) async {
     final url = Uri.parse(
       'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$stockno',
@@ -173,4 +173,60 @@ class ApiService {
       throw Exception('Failed to load chassisno: ${response.statusCode}');
     }
   }
+
+  //-----------------
+
+  /// ดึงเอกสารโดยกรองด้วย keyword
+  Future<List<String>> fetchDocumentspare(String filter) async {
+    final url = Uri.parse(
+      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckSparpath?keyword=&token=$filter',
+    );
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $apiToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      return data
+          .map<String>((item) => item['stockno']?.toString() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
+    } else {
+      throw Exception('Failed to load documents: ${response.statusCode}');
+    }
+  }
+
+
+  /// ดึงสาขาของเอกสารอะไหล่
+  Future<String?> fetchBranchByDocumentspare(String stockno) async {
+    final url = Uri.parse(
+      'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckSparpath?keyword=$stockno',
+    );
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $apiToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      if (data.isNotEmpty) {
+        final branchObj = data.first['branchformtran'];
+        if (branchObj != null) {
+          return '${branchObj['branchcode']} - ${branchObj['branchname']}';
+        }
+      }
+    }
+    return null;
+  }
+
+  
 }

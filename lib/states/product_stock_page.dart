@@ -1,3 +1,4 @@
+import 'package:stock_count/dialog/logout_dialog.dart';
 import 'package:stock_count/states/spare_part_stock_page.dart';
 import 'package:flutter/material.dart';
 import 'motorcycle_stock_page.dart'; // เพิ่ม import หน้าเป้าหมาย
@@ -46,13 +47,16 @@ class _ProductStockPageState extends State<ProductStockPage> {
             ),
           ],
         ),
-        actions: [
+       actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12.0),
             child: IconButton(
               icon: const Icon(Icons.menu, color: Colors.black),
               onPressed: () {
-                // TODO: ฟังก์ชันเมนู
+                showDialog(
+                  context: context,
+                  builder: (context) => const LogoutDialog(),
+                );
               },
             ),
           ),
@@ -92,7 +96,10 @@ class _ProductStockPageState extends State<ProductStockPage> {
                               context,
                               MaterialPageRoute(
                                 builder:
-                                    (context) => const MotorcycleStockPage(token: '', empName: '',),
+                                    (context) => MotorcycleStockPage(
+                                      token: widget.token,
+                                      empName: widget.empName,
+                                    ),
                               ),
                             );
                           },

@@ -10,41 +10,41 @@ import '../service/api_service.dart';
 import 'dart:async';
 
 class BranchProductCardMotor extends StatefulWidget {
-  final String? selectedBranchMotor;
-  final ValueChanged<String?> onBranchChangedMotor;
+  final String? selectedBranchMortor;
+  final ValueChanged<String?> onBranchChangedMortor;
 
-  final String? selectedChasisnoMotor;
-  final ValueChanged<String?> onChasisnoChangedMotor;
+  final String? selectedProductMortor;
+  final ValueChanged<String?> onProductChangedMortor;
 
-  final String? selectedDocumentMotor;
-  final ValueChanged<String?> onDocumentChangedMotor;
+  final String? selectedDocumentMortor;
+  final ValueChanged<String?> onDocumentChangedMortor;
 
-  final String? selectedStorageMotor;
-  final List<String> storageListMotor;
-  final ValueChanged<String?> onStorageChangedMotor;
+  final String? selectedStorageMortor;
+  final List<String> storageListMortor;
+  final ValueChanged<String?> onStorageChangedMortor;
 
-  final void Function(List<Map<String, String>> stockDataM)? onAddItemMotor;
+  final void Function(List<Map<String, String>> stockDataM)? onAddItem;
 
-  final String? selectedLocationMotor;
-  final ValueChanged<String?>? onLocationChangedMotor;
+  final String? selectedLocationMortor;
+  final ValueChanged<String?>? onLocationChangedMortor;
 
   final String apiToken;
 
   const BranchProductCardMotor({
     super.key,
-    required this.selectedBranchMotor,
-    required this.onBranchChangedMotor,
-    required this.selectedChasisnoMotor,
-    required this.onChasisnoChangedMotor,
-    required this.selectedDocumentMotor,
-    required this.onDocumentChangedMotor,
-    required this.selectedStorageMotor,
-    required this.storageListMotor,
-    required this.onStorageChangedMotor,
+    required this.selectedBranchMortor,
+    required this.onBranchChangedMortor,
+    required this.selectedProductMortor,
+    required this.onProductChangedMortor,
+    required this.selectedDocumentMortor,
+    required this.onDocumentChangedMortor,
+    required this.selectedStorageMortor,
+    required this.storageListMortor,
+    required this.onStorageChangedMortor,
     required this.apiToken,
-    this.onAddItemMotor,
-    this.selectedLocationMotor,
-    this.onLocationChangedMotor,
+    this.onAddItem,
+    this.selectedLocationMortor,
+    this.onLocationChangedMortor,
   });
 
   @override
@@ -54,68 +54,39 @@ class BranchProductCardMotor extends StatefulWidget {
 class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
   late ApiService apiService;
 
-  String? currentDocumentMotor;
-  String? currentBranchMotor;
-  String? currentBranchDisplayMotor;
-  String? currentLocationMotor;
-  String? currentChasisnoMotor;
-  String? apiToken;
+  String? currentDocument;
+  String? currentBranch;
+  String? currentBranchDisplay;
+  String? currentLocation;
+  String? currentProduct;
 
-  List<String> documentListMotor = [];
-  List<String> branchListMotor = [];
-  List<String> locationListMotor = [];
-  List<String> chasisnoListMotor = [];
+  List<String> documentList = [];
+  List<String> branchList = [];
+  List<String> locationList = [];
+  List<String> productList = [];
 
   List<Map<String, String>> stockDataM = [];
 
   @override
   void initState() {
     super.initState();
-    _initApiTokenAndFetch(); // ✅ เรียกโหลด token และ fetch api
+    apiService = ApiService(widget.apiToken);
 
-    currentDocumentMotor = widget.selectedDocumentMotor;
-    currentBranchMotor = widget.selectedBranchMotor;
-    currentBranchDisplayMotor =
-        widget.selectedBranchMotor != null ? widget.selectedBranchMotor : null;
-    currentLocationMotor = widget.selectedLocationMotor;
-    chasisnoListMotor =
-        widget.selectedChasisnoMotor != null
-            ? [widget.selectedChasisnoMotor!]
-            : [];
+    currentDocument = widget.selectedDocumentMortor;
+    currentBranch = widget.selectedBranchMortor;
+    currentBranchDisplay =
+        widget.selectedBranchMortor != null ? widget.selectedBranchMortor : null;
+    currentLocation = widget.selectedLocationMortor;
+    currentProduct = widget.selectedProductMortor;
 
-    loadStockDataM(); // โหลด stockData จาก SharedPreferences
-  }
+    fetchLocationsFromApi();
+    fetchProductsFromApi();
 
-  Future<void> _initApiTokenAndFetch() async {
-    String token = widget.apiToken;
-
-    // fallback จาก SharedPreferences เผื่อว่าง
-    if (token.isEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      token = prefs.getString('token') ?? '';
-    }
-
-    if (token.isEmpty) {
-      print('ERROR: No API token found!');
-      return; // ยังไม่เจอ token
-    }
-
-    print('DEBUG: Using apiToken = $token');
-
-    apiToken = token;
-    apiService = ApiService(apiToken!);
-
-    // ดึงข้อมูลจาก API
-    try {
-      await fetchLocationsFromApi();
-      await fetchProductsFromApi();
-    } catch (e) {
-      print('Error fetching initial data: $e');
-    }
+    loadStockData();
   }
 
   // โหลด stockData จาก SharedPreferences
-  Future<void> loadStockDataM() async {
+  Future<void> loadStockData() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonData = prefs.getString('stockDataM');
     if (jsonData != null) {
@@ -131,7 +102,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
   }
 
   // บันทึก stockData ลง SharedPreferences
-  Future<void> saveStockDataM() async {
+  Future<void> saveStockData() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonData = jsonEncode(stockDataM);
     await prefs.setString('stockDataM', jsonData);
@@ -139,11 +110,11 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
 
   Future<void> fetchProductsFromApi() async {
     try {
-      final chasisno = await apiService.fetchchassisno();
+      final products = await apiService.fetchchassisno();
       setState(() {
-        chasisnoListMotor = chasisno;
+        productList = products;
       });
-      print('Fetched products: $chasisnoListMotor');
+      print('Fetched products: $productList');
     } catch (e) {
       print('Error fetching products: $e');
     }
@@ -152,7 +123,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
   Future<List<String>> fetchDocuments(String filter) async {
     try {
       final docs = await apiService.fetchDocuments(filter);
-      documentListMotor = docs;
+      documentList = docs;
       return docs;
     } catch (e) {
       print('Error fetching documents: $e');
@@ -174,7 +145,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
     try {
       final locations = await apiService.fetchLocations();
       setState(() {
-        locationListMotor = locations;
+        locationList = locations;
       });
     } catch (e) {
       print('Error fetching locations: $e');
@@ -182,8 +153,8 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
   }
 
   void _notifyParent() {
-    if (widget.onAddItemMotor != null) {
-      widget.onAddItemMotor!(List<Map<String, String>>.from(stockDataM));
+    if (widget.onAddItem != null) {
+      widget.onAddItem!(List<Map<String, String>>.from(stockDataM));
     }
   }
 
@@ -218,7 +189,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                       alignment: Alignment.center,
                       child: const Text(
-                        'ข้อมูล STOCK สินค้าอะไหล่',
+                        'ข้อมูล STOCK รถยนต์',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -242,18 +213,42 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                     ),
                     const SizedBox(height: 8),
                     DropdownSearch<String>(
-                      selectedItem: currentDocumentMotor,
+                      selectedItem: currentDocument,
+                      asyncItems: fetchDocuments,
+                      filterFn: (item, filter) {
+                        if (filter.isEmpty) return true;
+                        final last4 =
+                            item.length >= 4
+                                ? item.substring(item.length - 4)
+                                : item;
+                        return last4.contains(filter);
+                      },
+                      onChanged: (value) async {
+                        setState(() {
+                          currentDocument = value;
+                        });
+                        widget.onDocumentChangedMortor(value);
+
+                        if (value != null) {
+                          final branchFull = await fetchBranchByDocument(value);
+                          if (branchFull != null) {
+                            setState(() {
+                              currentBranchDisplay = branchFull;
+                              currentBranch = branchFull.split(' - ').last;
+                              branchList = [branchFull];
+                            });
+                            widget.onBranchChangedMortor(currentBranch);
+                          }
+                        }
+                      },
                       popupProps: PopupProps.menu(
                         showSearchBox: true,
                         searchFieldProps: const TextFieldProps(
                           decoration: InputDecoration(
-                            hintText: 'พิมพ์เพื่อค้นหาเอกสาร',
+                            hintText: 'พิมพ์เลข 4 ตัวท้ายเอกสาร',
                             fillColor: Colors.white,
                             filled: true,
                           ),
-                        ),
-                        menuProps: const MenuProps(
-                          backgroundColor: Colors.white,
                         ),
                       ),
                       dropdownDecoratorProps: const DropDownDecoratorProps(
@@ -265,32 +260,8 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                           filled: true,
                         ),
                       ),
-                      asyncItems: fetchDocuments,
-                      onChanged: (value) async {
-                        setState(() {
-                          currentDocumentMotor = value;
-                        });
-                        widget.onDocumentChangedMotor(value);
-
-                        if (value != null) {
-                          final branchFull = await fetchBranchByDocument(value);
-                          if (branchFull != null) {
-                            setState(() {
-                              currentBranchDisplayMotor =
-                                  branchFull; // แสดง dropdown
-                              currentBranchMotor =
-                                  branchFull
-                                      .split(' - ')
-                                      .last; // ส่ง branch name
-                              branchListMotor = [
-                                branchFull,
-                              ]; // list ของ dropdown
-                            });
-                            widget.onBranchChangedMotor(currentBranchMotor);
-                          }
-                        }
-                      },
                     ),
+
 
                     const SizedBox(height: 8),
                     const Padding(
@@ -305,15 +276,15 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                     ),
                     const SizedBox(height: 8),
                     _buildDropdown(
-                      value: currentBranchDisplayMotor,
-                      list: branchListMotor,
+                      value: currentBranchDisplay,
+                      list: branchList,
                       hint: 'เลือกสาขา',
                       onChanged: (value) {
                         setState(() {
-                          currentBranchDisplayMotor = value;
-                          currentBranchMotor = value?.split(' - ').last.trim();
+                          currentBranchDisplay = value;
+                          currentBranch = value?.split(' - ').last.trim();
                         });
-                        widget.onBranchChangedMotor(currentBranchMotor);
+                        widget.onBranchChangedMortor(currentBranch);
                       },
                       enabled: false,
                     ),
@@ -331,24 +302,50 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildDropdown(
-                      value: currentLocationMotor,
-                      list: locationListMotor,
-                      hint: 'เลือกที่เก็บ',
+                    DropdownSearch<String>(
+                      selectedItem: currentLocation,
+                      items: locationList,
+                      filterFn: (item, filter) {
+                        if (filter.isEmpty) return true;
+                        final last2 =
+                            item.length >= 2
+                                ? item.substring(item.length - 2)
+                                : item;
+                        return last2.contains(filter);
+                      },
                       onChanged: (value) {
                         setState(() {
-                          currentLocationMotor = value;
+                          currentLocation = value;
                         });
-                        widget.onLocationChangedMotor?.call(value);
+                        widget.onLocationChangedMortor?.call(value);
                       },
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'พิมพ์เลข 2 ตัวท้ายที่เก็บ',
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                        ),
+                      ),
+                      dropdownDecoratorProps: const DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          hintText: 'เลือกที่เก็บ',
+                          fillColor: Colors.white,
+                          filled: true,
+                        ),
+                      ),
                     ),
 
-                    // รหัสเลขถัง
+                    // รหัสสินค้า
                     const SizedBox(height: 8),
                     const Padding(
                       padding: EdgeInsets.only(left: 20),
                       child: Text(
-                        'เลขถัง',
+                        'รหัสสินค้า',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -356,43 +353,68 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildDropdown(
-                      value: currentChasisnoMotor,
-                      list: chasisnoListMotor,
-                      hint: 'เลือกเลขถัง',
+                    DropdownSearch<String>(
+                      selectedItem: currentProduct,
+                      items: productList,
+                      filterFn: (item, filter) {
+                        if (filter.isEmpty) return true;
+                        final last4 =
+                            item.length >= 4
+                                ? item.substring(item.length - 4)
+                                : item;
+                        return last4.contains(filter);
+                      },
                       onChanged: (value) {
                         setState(() {
-                          currentChasisnoMotor = value;
+                          currentProduct = value;
                         });
-                        widget.onChasisnoChangedMotor(value);
+                        widget.onProductChangedMortor(value);
                       },
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'พิมพ์เลข 4 ตัวท้ายรหัสสินค้า',
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                        ),
+                      ),
+                      dropdownDecoratorProps: const DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          hintText: 'เลือกสินค้า',
+                          fillColor: Colors.white,
+                          filled: true,
+                        ),
+                      ),
                     ),
-
                     const SizedBox(height: 12),
                     Center(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          if (currentChasisnoMotor != null &&
-                              currentLocationMotor != null) {
+                          if (currentProduct != null &&
+                              currentLocation != null) {
                             final onlyLocation =
-                                currentLocationMotor!.split(' - ').last.trim();
+                                currentLocation!.split(' - ').last.trim();
                             setState(() {
                               stockDataM.add({
-                                'เลขถัง': currentChasisnoMotor!,
+                                'รหัสสินค้า': currentProduct!,
                                 'ที่เก็บ': onlyLocation,
                                 'จำนวน': '0',
                               });
-                              currentChasisnoMotor = null;
-                              currentLocationMotor = null;
+                              currentProduct = null;
+                              currentLocation = null;
                             });
 
-                            saveStockDataM(); // <-- เพิ่มตรงนี้
+                            saveStockData(); // <-- เพิ่มตรงนี้
                             _notifyParent();
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'เพิ่มเลขถัง ${stockDataM.last['เลขถัง']} สำเร็จ',
+                                  'เพิ่มสินค้า ${stockDataM.last['รหัสสินค้า']} สำเร็จ',
                                 ),
                               ),
                             );
@@ -455,7 +477,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                             child: Padding(
                               padding: EdgeInsets.all(8),
                               child: Text(
-                                'เลขถัง',
+                                'รหัสสินค้า',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
@@ -504,7 +526,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                 : Colors.grey.shade100,
                         child: Row(
                           children: [
-                            // เลขถัง
+                            // รหัสสินค้า (เดิม)
                             Expanded(
                               child: Center(
                                 child: InkWell(
@@ -518,7 +540,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                               textAlign: TextAlign.center,
                                             ),
                                             content: Text(
-                                              'คุณต้องการลบสินค้า ${data['เลขถัง']} หรือไม่?',
+                                              'คุณต้องการลบสินค้า ${data['รหัสสินค้า']} หรือไม่?',
                                               textAlign: TextAlign.center,
                                             ),
                                             actionsAlignment:
@@ -560,7 +582,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                       setState(() {
                                         stockDataM.removeAt(index);
                                       });
-                                      saveStockDataM();
+                                      saveStockData();
                                       _notifyParent();
                                     }
                                   },
@@ -569,7 +591,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: Text(
-                                        data['เลขถัง'] ?? '',
+                                        data['รหัสสินค้า'] ?? '',
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
                                           color: Colors.blue,
@@ -601,7 +623,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                     context: context,
                                     builder:
                                         (_) => EditStockDialog(
-                                          productCode: data['เลขถัง'] ?? '',
+                                          productCode: data['รหัสสินค้า'] ?? '',
                                           currentQuantity:
                                               int.tryParse(
                                                 data['จำนวน'] ?? '0',
@@ -615,7 +637,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                       stockDataM[index]['จำนวน'] =
                                           newQty.toString();
                                     });
-                                    saveStockDataM();
+                                    saveStockData();
                                     _notifyParent();
                                   }
                                 },
@@ -656,7 +678,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                         i < stockDataM.length;
                                         i++
                                       ) {
-                                        if (stockDataM[i]['เลขถัง'] ==
+                                        if (stockDataM[i]['รหัสสินค้า'] ==
                                             scannedCode) {
                                           final qtyCount =
                                               int.tryParse(
@@ -671,7 +693,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                       }
                                     });
 
-                                    await saveStockDataM();
+                                    await saveStockData();
                                     _notifyParent();
 
                                     // แสดง popup
