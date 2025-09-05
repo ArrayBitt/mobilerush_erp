@@ -2,12 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http; 
+import 'package:http/http.dart' as http;
 import 'package:stock_count/wisget/branch_product_card.dart';
 import 'package:stock_count/wisget/record_card.dart';
 import '../dialog/save_dialog.dart';
 import '../service/api_service.dart';
-
 
 class MotorcycleStockPage extends StatefulWidget {
   final String token;
@@ -31,7 +30,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
   String? selectedProduct;
   String? selectedDocument;
   String? selectedStorage;
-  List<String> storageList = [];
+  List<Map<String, dynamic>> storageList = [];
 
   List<Map<String, String>> stockData = [];
   String? mstStockId;
@@ -93,14 +92,47 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
           if (inventoryList != null && inventoryList.isNotEmpty) {
             inventoryCheckId =
                 inventoryList.first['inventory_check_id'].toString();
+
+            // แปลงให้เป็น List<Map<String, dynamic>> พร้อม location และ locationname
+            final locations =
+                inventoryList
+                    .map((item) {
+                      final loc = item['location'];
+                      final locCode =
+                          loc != null
+                              ? loc['location']?.toString() ?? 'unknown'
+                              : 'unknown';
+                      final locName =
+                          loc != null
+                              ? loc['locationname']?.toString() ?? ''
+                              : '';
+                      return {'location': locCode, 'locationname': locName};
+                    })
+                    .toSet()
+                    .toList();
+
+            setState(() {
+              storageList = List<Map<String, dynamic>>.from(locations);
+            });
+
+            print('เอกสาร $docNo มีที่เก็บทั้งหมด: ${locations.length} อัน');
+            print('รายการที่เก็บ: $storageList');
           } else {
             inventoryCheckId = null;
+            setState(() {
+              storageList = [];
+            });
+            print('เอกสาร $docNo ไม่มีข้อมูลที่เก็บ');
           }
 
           setState(() {});
         } else {
           mstStockId = null;
           inventoryCheckId = null;
+          setState(() {
+            storageList = [];
+          });
+          print('ไม่พบข้อมูลเอกสาร $docNo');
         }
       } else {
         print('Failed to fetch stock data. Status: ${response.statusCode}');

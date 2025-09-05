@@ -20,13 +20,18 @@ class BranchProductCardMotor extends StatefulWidget {
   final ValueChanged<String?> onDocumentChangedMortor;
 
   final String? selectedStorageMortor;
-  final List<String> storageListMortor;
+  
+  final List<Map<String, dynamic>> storageListMortor;
+
   final ValueChanged<String?> onStorageChangedMortor;
 
   final void Function(List<Map<String, String>> stockDataM)? onAddItem;
 
   final String? selectedLocationMortor;
+  
   final ValueChanged<String?>? onLocationChangedMortor;
+
+  final Future<void> Function(String docNo)? fetchMstStockIdCallback;
 
   final String apiToken;
 
@@ -44,7 +49,8 @@ class BranchProductCardMotor extends StatefulWidget {
     required this.apiToken,
     this.onAddItem,
     this.selectedLocationMortor,
-    this.onLocationChangedMortor,
+    this.onLocationChangedMortor, 
+    this.fetchMstStockIdCallback,
   });
 
   @override
@@ -230,6 +236,9 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                         widget.onDocumentChangedMortor(value);
 
                         if (value != null) {
+                          // เรียก callback จาก parent
+                          await widget.fetchMstStockIdCallback?.call(value);
+
                           final branchFull = await fetchBranchByDocument(value);
                           if (branchFull != null) {
                             setState(() {
@@ -241,6 +250,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                           }
                         }
                       },
+
                       popupProps: PopupProps.menu(
                         showSearchBox: true,
                         searchFieldProps: const TextFieldProps(
@@ -302,17 +312,15 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    DropdownSearch<String>(
+                   DropdownSearch<String>(
                       selectedItem: currentLocation,
-                      items: locationList,
-                      filterFn: (item, filter) {
-                        if (filter.isEmpty) return true;
-                        final last2 =
-                            item.length >= 2
-                                ? item.substring(item.length - 2)
-                                : item;
-                        return last2.contains(filter);
-                      },
+                      items:
+                          widget.storageListMortor
+                              .map(
+                                (e) =>
+                                    '${e['location']} - ${e['locationname']}',
+                              )
+                              .toList(),
                       onChanged: (value) {
                         setState(() {
                           currentLocation = value;
@@ -339,6 +347,9 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                         ),
                       ),
                     ),
+
+
+
 
                     // รหัสสินค้า
                     const SizedBox(height: 8),
