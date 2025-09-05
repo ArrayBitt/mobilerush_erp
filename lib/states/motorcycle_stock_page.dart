@@ -74,7 +74,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
     }
   }
 
-  Future<void> _fetchMstStockId(String docNo) async {
+Future<void> _fetchMstStockId(String docNo) async {
     final url = Uri.parse(
       'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$docNo&token=${widget.token}',
     );
@@ -93,23 +93,28 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
             inventoryCheckId =
                 inventoryList.first['inventory_check_id'].toString();
 
-            // แปลงให้เป็น List<Map<String, dynamic>> พร้อม location และ locationname
+            // ✅ ทำให้ unique ด้วย Set<String>
+            final uniqueSet =
+                inventoryList.map((item) {
+                  final loc = item['location'];
+                  final locCode =
+                      loc != null
+                          ? loc['location']?.toString() ?? 'unknown'
+                          : 'unknown';
+                  final locName =
+                      loc != null ? loc['locationname']?.toString() ?? '' : '';
+                  return '$locCode|$locName'; // บีบเป็น String
+                }).toSet();
+
+            // ✅ แปลงกลับเป็น List<Map<String, dynamic>>
             final locations =
-                inventoryList
-                    .map((item) {
-                      final loc = item['location'];
-                      final locCode =
-                          loc != null
-                              ? loc['location']?.toString() ?? 'unknown'
-                              : 'unknown';
-                      final locName =
-                          loc != null
-                              ? loc['locationname']?.toString() ?? ''
-                              : '';
-                      return {'location': locCode, 'locationname': locName};
-                    })
-                    .toSet()
-                    .toList();
+                uniqueSet.map((str) {
+                  final parts = str.split('|');
+                  return {
+                    'location': parts[0],
+                    'locationname': parts.length > 1 ? parts[1] : '',
+                  };
+                }).toList();
 
             setState(() {
               storageList = List<Map<String, dynamic>>.from(locations);
