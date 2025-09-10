@@ -33,6 +33,8 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
   List<Map<String, dynamic>> storageList = [];
 
   List<Map<String, String>> stockData = [];
+
+  List<String> productListWithChassis = [];
   String? mstStockId;
   String? inventoryCheckId;
 
@@ -74,7 +76,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
     }
   }
 
-Future<void> _fetchMstStockId(String docNo) async {
+  Future<void> _fetchMstStockId(String docNo) async {
     final url = Uri.parse(
       'https://erp-uat.somjai.app/api/mststocks/getInventoryCheckCar?keyword=$docNo&token=${widget.token}',
     );
@@ -118,7 +120,16 @@ Future<void> _fetchMstStockId(String docNo) async {
 
             setState(() {
               storageList = List<Map<String, dynamic>>.from(locations);
+              // ถ้าต้องการให้ UI อัปเดตค่า selectedStorage เป็น null เมื่อเปลี่ยนเอกสาร:
+              selectedStorage = null;
             });
+
+            print("🔔 _fetchMstStockId: mstStockId = $mstStockId");
+            print("🔔 _fetchMstStockId: inventoryCheckId = $inventoryCheckId");
+            print(
+              "🔔 _fetchMstStockId: storageList.length = ${storageList.length}",
+            );
+            print("🔔 _fetchMstStockId: storageList = $storageList");
 
             print('เอกสาร $docNo มีที่เก็บทั้งหมด: ${locations.length} อัน');
             print('รายการที่เก็บ: $storageList');
@@ -144,6 +155,44 @@ Future<void> _fetchMstStockId(String docNo) async {
       }
     } catch (e) {
       print('Error fetching stock data: $e');
+    }
+  }
+
+  Future<List<String>> _getProductsWithChassis(
+    String mstStockId,
+    String location,
+  ) async {
+    final url = Uri.parse(
+      'https://erp-uat.somjai.app/api/inventory-check/getdatainventorycheckcar'
+      '?mststockid=$mstStockId&location=$location&chassisno=&token=${widget.token}',
+    );
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode != 200) {
+        print("❌ Failed to fetch data. Status: ${response.statusCode}");
+        return [];
+      }
+
+      final data = jsonDecode(response.body);
+      if (data is! List) return [];
+
+      final products = <String>{};
+
+      for (var item in data) {
+        final chassisNo = item['stockitem']?['chassisno']?.toString() ?? '';
+
+        if (chassisNo.isNotEmpty) {
+          products.add(chassisNo); // <-- เอาแค่ chassisNo
+          print("📋 chassis: $chassisNo");
+        }
+      }
+
+      return products.toList();
+    } catch (e) {
+      print("❌ Exception in _getProductsWithChassis: $e");
+      return [];
     }
   }
 
@@ -194,6 +243,7 @@ Future<void> _fetchMstStockId(String docNo) async {
                 _savePreference("selectedBranch", value);
               },
               selectedProductMortor: selectedProduct,
+              productListMortor: productListWithChassis, // <-- ใส่ตรงนี้
               onProductChangedMortor: (value) {
                 setState(() => selectedProduct = value);
                 _savePreference("selectedProduct", value);
@@ -202,16 +252,44 @@ Future<void> _fetchMstStockId(String docNo) async {
               onDocumentChangedMortor: (value) async {
                 setState(() => selectedDocument = value);
                 _savePreference("selectedDocument", value);
+
                 if (value != null && value.isNotEmpty) {
-                  await _fetchMstStockId(value); // ✅ ดึง mststockid
+                  await _fetchMstStockId(value); // ดึง mstStockId
+                  selectedProduct = null; // <-- รีเซ็ต product
+                  productListWithChassis = []; // <-- ล้าง list เดิม
                 }
               },
               selectedStorageMortor: selectedStorage,
               storageListMortor: storageList,
-              onStorageChangedMortor: (value) {
+
+              onStorageChangedMortor: (value) async {
                 setState(() => selectedStorage = value);
-                _savePreference("selectedStorage", value);
+                await _savePreference("selectedStorage", value);
+
+                if (value == null || value.isEmpty) return;
+
+                final locationCode = value.split(' - ').first.trim();
+                if (mstStockId == null) return;
+
+                final productsWithChassis = await _getProductsWithChassis(
+                  mstStockId!,
+                  locationCode,
+                );
+
+                print("🔔 Products fetched: ${productsWithChassis.length}");
+                print("🔔 Products list: $productsWithChassis");
+
+                setState(() {
+                  productListWithChassis = List<String>.from(
+                    productsWithChassis,
+                  ); // ✅ บังคับเป็น List<String>
+                  selectedProduct = null; // รีเซ็ต dropdown
+                });
+                print(
+                  "🔔 Storage $locationCode มี chassisno ทั้งหมด: ${productsWithChassis.length}",
+                );
               },
+
               apiToken: widget.token,
               onAddItem: (stockList) async {
                 setState(() {
@@ -282,7 +360,7 @@ Future<void> _fetchMstStockId(String docNo) async {
                                 return {
                                   "inventory_check_id":
                                       inventoryCheckId, // ✅ เพิ่มเข้าไปในแต่ละ item
-                                  "submodel_code": e['รหัสสินค้า']?.trim(),
+                                  "chassisno": e['เลขถัง']?.trim(),
                                   "location": e['ที่เก็บ']?.trim() ?? '00',
                                   "qtycount": qty,
                                 };

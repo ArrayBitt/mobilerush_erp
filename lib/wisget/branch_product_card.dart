@@ -20,7 +20,7 @@ class BranchProductCardMotor extends StatefulWidget {
   final ValueChanged<String?> onDocumentChangedMortor;
 
   final String? selectedStorageMortor;
-  
+
   final List<Map<String, dynamic>> storageListMortor;
 
   final ValueChanged<String?> onStorageChangedMortor;
@@ -28,10 +28,12 @@ class BranchProductCardMotor extends StatefulWidget {
   final void Function(List<Map<String, String>> stockDataM)? onAddItem;
 
   final String? selectedLocationMortor;
-  
+
   final ValueChanged<String?>? onLocationChangedMortor;
 
   final Future<void> Function(String docNo)? fetchMstStockIdCallback;
+
+  final List<String> productListMortor;
 
   final String apiToken;
 
@@ -49,8 +51,9 @@ class BranchProductCardMotor extends StatefulWidget {
     required this.apiToken,
     this.onAddItem,
     this.selectedLocationMortor,
-    this.onLocationChangedMortor, 
+    this.onLocationChangedMortor,
     this.fetchMstStockIdCallback,
+    required this.productListMortor,
   });
 
   @override
@@ -69,7 +72,9 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
   List<String> documentList = [];
   List<String> branchList = [];
   List<String> locationList = [];
-  List<String> productList = [];
+
+
+
 
   List<Map<String, String>> stockDataM = [];
 
@@ -81,18 +86,22 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
     currentDocument = widget.selectedDocumentMortor;
     currentBranch = widget.selectedBranchMortor;
     currentBranchDisplay =
-        widget.selectedBranchMortor != null ? widget.selectedBranchMortor : null;
+        widget.selectedBranchMortor != null
+            ? widget.selectedBranchMortor
+            : null;
     currentLocation = widget.selectedLocationMortor;
     currentProduct = widget.selectedProductMortor;
 
-    fetchLocationsFromApi();
-    fetchProductsFromApi();
+    fetchLocationsFromApi(); // ✅ เพิ่ม: โหลด location
+   
 
     loadStockData();
   }
 
-  // โหลด stockData จาก SharedPreferences
+ 
+
   Future<void> loadStockData() async {
+    // ✅ เพิ่ม
     final prefs = await SharedPreferences.getInstance();
     final jsonData = prefs.getString('stockDataM');
     if (jsonData != null) {
@@ -103,28 +112,21 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                 .map<Map<String, String>>((e) => Map<String, String>.from(e))
                 .toList();
       });
-      _notifyParent();
+      _notifyParent(); // ✅ เพิ่ม: แจ้ง parent
     }
   }
 
-  // บันทึก stockData ลง SharedPreferences
   Future<void> saveStockData() async {
+    // ✅ เพิ่ม
     final prefs = await SharedPreferences.getInstance();
     final jsonData = jsonEncode(stockDataM);
     await prefs.setString('stockDataM', jsonData);
   }
 
-  Future<void> fetchProductsFromApi() async {
-    try {
-      final products = await apiService.fetchchassisno();
-      setState(() {
-        productList = products;
-      });
-      print('Fetched products: $productList');
-    } catch (e) {
-      print('Error fetching products: $e');
-    }
-  }
+
+
+  
+
 
   Future<List<String>> fetchDocuments(String filter) async {
     try {
@@ -272,7 +274,6 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
 
-
                     const SizedBox(height: 8),
                     const Padding(
                       padding: EdgeInsets.only(left: 20),
@@ -312,7 +313,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                   DropdownSearch<String>(
+                    DropdownSearch<String>(
                       selectedItem: currentLocation,
                       items:
                           widget.storageListMortor
@@ -321,12 +322,19 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                     '${e['location']} - ${e['locationname']}',
                               )
                               .toList(),
-                      onChanged: (value) {
+                      onChanged: (value) async {
                         setState(() {
                           currentLocation = value;
                         });
-                        widget.onLocationChangedMortor?.call(value);
+
+                        final locationCode = value?.split(' - ').first.trim();
+                        widget.onStorageChangedMortor(locationCode);
+                      
+
+
+                        print("📌 extracted onlyLocation -> $locationCode");
                       },
+
                       popupProps: const PopupProps.menu(
                         showSearchBox: true,
                         searchFieldProps: TextFieldProps(
@@ -348,9 +356,6 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
 
-
-
-
                     // รหัสสินค้า
                     const SizedBox(height: 8),
                     const Padding(
@@ -364,9 +369,11 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    DropdownSearch<String>(
+                    // รหัสสินค้า
+                    // รหัสสินค้า
+                  DropdownSearch<String>(
                       selectedItem: currentProduct,
-                      items: productList,
+                      items: widget.productListMortor, // ✅ ดึงจาก parent ตรง ๆ
                       filterFn: (item, filter) {
                         if (filter.isEmpty) return true;
                         final last4 =
@@ -401,6 +408,8 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                         ),
                       ),
                     ),
+
+
                     const SizedBox(height: 12),
                     Center(
                       child: ElevatedButton.icon(
@@ -419,7 +428,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                               currentLocation = null;
                             });
 
-                            saveStockData(); // <-- เพิ่มตรงนี้
+                            saveStockData(); // ✅ เพิ่ม
                             _notifyParent();
 
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -646,10 +655,10 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                   if (newQty != null) {
                                     setState(() {
                                       stockDataM[index]['จำนวน'] =
-                                          newQty.toString();
+                                          newQty.toString(); // 🔹 แก้ไข
                                     });
-                                    saveStockData();
-                                    _notifyParent();
+                                    saveStockData(); // ✅ เพิ่ม
+                                    _notifyParent(); // ✅ เพิ่ม
                                   }
                                 },
                                 child: Padding(
@@ -689,8 +698,10 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                         i < stockDataM.length;
                                         i++
                                       ) {
+                                        // 🔹 ตรวจสอบว่าแถวไหนตรงกับรหัสที่สแกน
                                         if (stockDataM[i]['รหัสสินค้า'] ==
                                             scannedCode) {
+                                          // 🔹 อัปเดตจำนวน +1
                                           final qtyCount =
                                               int.tryParse(
                                                 stockDataM[i]['จำนวน'] ?? '0',
@@ -699,21 +710,25 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                           stockDataM[i]['จำนวน'] =
                                               (qtyCount + 1).toString();
                                           found = true;
-                                          break; // เพิ่มแถวเดียวที่ตรง
+                                          break; // 🔹 ออก loop หลังเจอแถวแรก
                                         }
                                       }
                                     });
 
+                                    // ✅ บันทึกลง SharedPreferences
                                     await saveStockData();
+
+                                    // ✅ แจ้ง parent widget ว่ามีการอัปเดต stockData
                                     _notifyParent();
 
-                                    // แสดง popup
+                                    // ✅ แสดง popup ผลลัพธ์
                                     showDialog(
                                       context: context,
                                       builder:
                                           (_) => ScanResultDialog(
                                             code: scannedCode,
-                                            success: found,
+                                            success:
+                                                found, // แสดงว่าเจอสินค้าหรือไม่
                                           ),
                                     );
                                   }
