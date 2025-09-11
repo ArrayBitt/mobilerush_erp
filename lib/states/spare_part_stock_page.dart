@@ -30,9 +30,11 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
   String? selectedProduct;
   String? selectedDocument;
   String? selectedStorage;
-  List<String> storageList = [];
+  List<Map<String, dynamic>> storageList = [];
 
   List<Map<String, String>> stockData = [];
+
+  List<String> productListWithChassis = [];
   String? mstStockId;
   String? inventoryCheckId;
 
@@ -92,20 +94,116 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
           if (inventoryList != null && inventoryList.isNotEmpty) {
             inventoryCheckId =
                 inventoryList.first['inventory_check_id'].toString();
+
+            // ✅ ทำให้ unique ด้วย Set<String>
+            final uniqueSet =
+                inventoryList.map((item) {
+                  final loc = item['location'];
+                  final locCode =
+                      loc != null
+                          ? loc['location']?.toString() ?? 'unknown'
+                          : 'unknown';
+                  final locName =
+                      loc != null ? loc['locationname']?.toString() ?? '' : '';
+                  return '$locCode|$locName'; // บีบเป็น String
+                }).toSet();
+
+            // ✅ แปลงกลับเป็น List<Map<String, dynamic>>
+            final locations =
+                uniqueSet.map((str) {
+                  final parts = str.split('|');
+                  return {
+                    'location': parts[0],
+                    'locationname': parts.length > 1 ? parts[1] : '',
+                  };
+                }).toList();
+
+            setState(() {
+              storageList = List<Map<String, dynamic>>.from(locations);
+              // ถ้าต้องการให้ UI อัปเดตค่า selectedStorage เป็น null เมื่อเปลี่ยนเอกสาร:
+              selectedStorage = null;
+            });
+
+            print("🔔 _fetchMstStockId: mstStockId = $mstStockId");
+            print("🔔 _fetchMstStockId: inventoryCheckId = $inventoryCheckId");
+            print(
+              "🔔 _fetchMstStockId: storageList.length = ${storageList.length}",
+            );
+            print("🔔 _fetchMstStockId: storageList = $storageList");
+
+            print('เอกสาร $docNo มีที่เก็บทั้งหมด: ${locations.length} อัน');
+            print('รายการที่เก็บ: $storageList');
           } else {
             inventoryCheckId = null;
+            setState(() {
+              storageList = [];
+            });
+            print('เอกสาร $docNo ไม่มีข้อมูลที่เก็บ');
           }
 
           setState(() {});
         } else {
           mstStockId = null;
           inventoryCheckId = null;
+          setState(() {
+            storageList = [];
+          });
+          print('ไม่พบข้อมูลเอกสาร $docNo');
         }
       } else {
         print('Failed to fetch stock data. Status: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching stock data: $e');
+    }
+  }
+
+  Future<List<String>> _getProductsWithChassis(
+    String mstStockId,
+    String location,
+  ) async {
+    final url = Uri.parse(
+      'https://erp-uat.somjai.app/api/inventory-check/getdatainventorychecksparpath'
+      '?mststockid=$mstStockId&location=$location&submodelcode=&token=${widget.token}',
+    );
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode != 200) {
+        print("❌ Failed to fetch data. Status: ${response.statusCode}");
+        return [];
+      }
+
+      final data = jsonDecode(response.body);
+      if (data is! List) return [];
+
+      final products = <String>{};
+
+      for (var item in data) {
+        final stockitem = item['stockitem'] ?? {};
+        final submodelNew = stockitem['submodel_new'] ?? {};
+
+        final submodelcode = submodelNew['submodel_code']?.toString() ?? '';
+        final meaning = submodelNew['meaning']?.toString() ?? '';
+        final chassisno = stockitem['chassisno']?.toString() ?? '';
+        final enginno = stockitem['enginno']?.toString() ?? '';
+
+        if (submodelcode.isNotEmpty) {
+          // ✅ เก็บแค่ submodel_code สำหรับ dropdown
+          products.add(submodelcode);
+
+          // ✅ log ให้ครบ
+          print(
+            "📋 submodelcode: $submodelcode | meaning: $meaning | chassisno: $chassisno | enginno: $enginno",
+          );
+        }
+      }
+
+      return products.toList();
+    } catch (e) {
+      print("❌ Exception in _getProductsWithChassis: $e");
+      return [];
     }
   }
 
@@ -133,7 +231,7 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
             ),
             const SizedBox(width: 10),
             const Text(
-              'SparePartStock',
+              'Motorcyclestock',
               style: TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 16,
@@ -156,7 +254,8 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                 setState(() => selectedBranch = value);
                 _savePreference("selectedBranch", value);
               },
-              selectedProduct: selectedProduct,
+             selectedProduct: selectedProduct,
+              productListMortor: productListWithChassis, // <-- ใส่ตรงนี้
               onProductChanged: (value) {
                 setState(() => selectedProduct = value);
                 _savePreference("selectedProduct", value);
@@ -165,24 +264,52 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
               onDocumentChanged: (value) async {
                 setState(() => selectedDocument = value);
                 _savePreference("selectedDocument", value);
+
                 if (value != null && value.isNotEmpty) {
-                  await _fetchMstStockId(value); // ✅ ดึง mststockid
+                  await _fetchMstStockId(value); // ดึง mstStockId
+                  selectedProduct = null; // <-- รีเซ็ต product
+                  productListWithChassis = []; // <-- ล้าง list เดิม
                 }
               },
               selectedStorage: selectedStorage,
               storageList: storageList,
-              onStorageChanged: (value) {
+
+              onStorageChanged: (value) async {
                 setState(() => selectedStorage = value);
-                _savePreference("selectedStorage", value);
+                await _savePreference("selectedStorage", value);
+
+                if (value == null || value.isEmpty) return;
+
+                final locationCode = value.split(' - ').first.trim();
+                if (mstStockId == null) return;
+
+                final productsWithChassis = await _getProductsWithChassis(
+                  mstStockId!,
+                  locationCode,
+                );
+
+                print("🔔 Products fetched: ${productsWithChassis.length}");
+                print("🔔 Products list: $productsWithChassis");
+
+                setState(() {
+                  productListWithChassis = List<String>.from(
+                    productsWithChassis,
+                  ); // ✅ บังคับเป็น List<String>
+                  selectedProduct = null; // รีเซ็ต dropdown
+                });
+                print(
+                  "🔔 Storage $locationCode มี submodelcode ทั้งหมด: ${productsWithChassis.length}",
+                );
               },
+
               apiToken: widget.token,
               onAddItem: (stockList) async {
-                setState(() {
+               setState(() {
                   stockData = List<Map<String, String>>.from(stockList);
                 });
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('stockData', jsonEncode(stockData));
-              },
+              }, 
             ),
             const SizedBox(height: 16),
             RecordInfoCard(
@@ -229,7 +356,7 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                       if (mstStockId == null) {
                         _showCustomPopup(
                           title: 'แจ้งเตือน',
-                          message: 'ไม่พบ mststockid สำหรับเลขเอกสารนี้',
+                          message: 'กรุณาเพิ่มสินค้าก่อนบันทึก',
                           success: false,
                         );
                         return;
@@ -244,7 +371,7 @@ class _SparePartStockPageState extends State<SparePartStockPage> {
                                 if (qty == null || qty <= 0) return null;
                                 return {
                                   "inventory_check_id":
-                                      inventoryCheckId, // ✅ เพิ่มเข้าไปในแต่ละ item
+                                      inventoryCheckId, 
                                   "submodel_code": e['รหัสสินค้า']?.trim(),
                                   "location": e['ที่เก็บ']?.trim() ?? '00',
                                   "qtycount": qty,

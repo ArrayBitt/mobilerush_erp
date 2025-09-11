@@ -7,7 +7,6 @@ class ApiService {
 
   ApiService(this.apiToken);
 
-  /// ดึงสินค้าทั้งหมด
   Future<List<String>> fetchProducts() async {
     final url = Uri.parse(
       'https://erp-uat.somjai.app/api/submodels/getAllBysearchSparecheckstock?keyword=',

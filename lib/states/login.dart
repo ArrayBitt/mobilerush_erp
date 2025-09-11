@@ -22,7 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus(); // ✅ เช็คว่ามี token อยู่แล้วหรือไม่
+    _checkLoginStatus(); 
   }
 
   Future<void> _checkLoginStatus() async {

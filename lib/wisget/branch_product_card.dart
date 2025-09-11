@@ -73,9 +73,6 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
   List<String> branchList = [];
   List<String> locationList = [];
 
-
-
-
   List<Map<String, String>> stockDataM = [];
 
   @override
@@ -93,12 +90,9 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
     currentProduct = widget.selectedProductMortor;
 
     fetchLocationsFromApi(); // ✅ เพิ่ม: โหลด location
-   
 
     loadStockData();
   }
-
- 
 
   Future<void> loadStockData() async {
     // ✅ เพิ่ม
@@ -122,11 +116,6 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
     final jsonData = jsonEncode(stockDataM);
     await prefs.setString('stockDataM', jsonData);
   }
-
-
-
-  
-
 
   Future<List<String>> fetchDocuments(String filter) async {
     try {
@@ -329,8 +318,6 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
 
                         final locationCode = value?.split(' - ').first.trim();
                         widget.onStorageChangedMortor(locationCode);
-                      
-
 
                         print("📌 extracted onlyLocation -> $locationCode");
                       },
@@ -355,13 +342,11 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                         ),
                       ),
                     ),
-
-                    // รหัสสินค้า
                     const SizedBox(height: 8),
                     const Padding(
                       padding: EdgeInsets.only(left: 20),
                       child: Text(
-                        'รหัสสินค้า',
+                        'เลขถัง',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -369,11 +354,10 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // รหัสสินค้า
-                    // รหัสสินค้า
-                  DropdownSearch<String>(
+             
+                    DropdownSearch<String>(
                       selectedItem: currentProduct,
-                      items: widget.productListMortor, // ✅ ดึงจาก parent ตรง ๆ
+                      items: widget.productListMortor, 
                       filterFn: (item, filter) {
                         if (filter.isEmpty) return true;
                         final last4 =
@@ -392,7 +376,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                         showSearchBox: true,
                         searchFieldProps: TextFieldProps(
                           decoration: InputDecoration(
-                            hintText: 'พิมพ์เลข 4 ตัวท้ายรหัสสินค้า',
+                            hintText: 'พิมพ์เลข 4 ตัวท้ายเลขถัง',
                             fillColor: Colors.white,
                             filled: true,
                           ),
@@ -402,13 +386,12 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                         dropdownSearchDecoration: InputDecoration(
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                          hintText: 'เลือกสินค้า',
+                          hintText: 'เลือกเลขถัง',
                           fillColor: Colors.white,
                           filled: true,
                         ),
                       ),
                     ),
-
 
                     const SizedBox(height: 12),
                     Center(
@@ -420,7 +403,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                 currentLocation!.split(' - ').last.trim();
                             setState(() {
                               stockDataM.add({
-                                'รหัสสินค้า': currentProduct!,
+                                'เลขถัง': currentProduct!,
                                 'ที่เก็บ': onlyLocation,
                                 'จำนวน': '0',
                               });
@@ -434,7 +417,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'เพิ่มสินค้า ${stockDataM.last['รหัสสินค้า']} สำเร็จ',
+                                  'เพิ่มสินค้า ${stockDataM.last['เลขถัง']} สำเร็จ',
                                 ),
                               ),
                             );
@@ -497,7 +480,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                             child: Padding(
                               padding: EdgeInsets.all(8),
                               child: Text(
-                                'รหัสสินค้า',
+                                'เลขถัง',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
@@ -546,7 +529,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                 : Colors.grey.shade100,
                         child: Row(
                           children: [
-                            // รหัสสินค้า (เดิม)
+                            
                             Expanded(
                               child: Center(
                                 child: InkWell(
@@ -560,7 +543,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                               textAlign: TextAlign.center,
                                             ),
                                             content: Text(
-                                              'คุณต้องการลบสินค้า ${data['รหัสสินค้า']} หรือไม่?',
+                                              'คุณต้องการลบสินค้า ${data['เลขถัง']} หรือไม่?',
                                               textAlign: TextAlign.center,
                                             ),
                                             actionsAlignment:
@@ -611,7 +594,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: Text(
-                                        data['รหัสสินค้า'] ?? '',
+                                        data['เลขถัง'] ?? '',
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
                                           color: Colors.blue,
@@ -643,7 +626,7 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                     context: context,
                                     builder:
                                         (_) => EditStockDialog(
-                                          productCode: data['รหัสสินค้า'] ?? '',
+                                          productCode: data['เลขถัง'] ?? '',
                                           currentQuantity:
                                               int.tryParse(
                                                 data['จำนวน'] ?? '0',
@@ -698,8 +681,8 @@ class _BranchProductCardMotorState extends State<BranchProductCardMotor> {
                                         i < stockDataM.length;
                                         i++
                                       ) {
-                                        // 🔹 ตรวจสอบว่าแถวไหนตรงกับรหัสที่สแกน
-                                        if (stockDataM[i]['รหัสสินค้า'] ==
+                                      
+                                        if (stockDataM[i]['เลขถัง'] ==
                                             scannedCode) {
                                           // 🔹 อัปเดตจำนวน +1
                                           final qtyCount =

@@ -32,7 +32,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
   String? selectedStorage;
   List<Map<String, dynamic>> storageList = [];
 
-  List<Map<String, String>> stockData = [];
+  List<Map<String, String>> stockDataM = [];
 
   List<String> productListWithChassis = [];
   String? mstStockId;
@@ -55,11 +55,11 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
       selectedStorage = prefs.getString("selectedStorage");
     });
 
-    final stockJson = prefs.getString('stockData');
+    final stockJson = prefs.getString('stockDataM');
     if (stockJson != null) {
       final List<dynamic> decoded = jsonDecode(stockJson);
       setState(() {
-        stockData =
+        stockDataM =
             decoded
                 .map<Map<String, String>>((e) => Map<String, String>.from(e))
                 .toList();
@@ -293,10 +293,10 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
               apiToken: widget.token,
               onAddItem: (stockList) async {
                 setState(() {
-                  stockData = List<Map<String, String>>.from(stockList);
+                  stockDataM = List<Map<String, String>>.from(stockList);
                 });
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('stockData', jsonEncode(stockData));
+                await prefs.setString('stockDataM', jsonEncode(stockDataM));
               },
             ),
             const SizedBox(height: 16),
@@ -332,7 +332,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                     onPressed: () async {
                       final timestamp = DateTime.now().toIso8601String();
 
-                      if (stockData.isEmpty) {
+                      if (stockDataM.isEmpty) {
                         _showCustomPopup(
                           title: 'แจ้งเตือน',
                           message: 'กรุณาเพิ่มสินค้าก่อนบันทึก',
@@ -344,14 +344,14 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                       if (mstStockId == null) {
                         _showCustomPopup(
                           title: 'แจ้งเตือน',
-                          message: 'ไม่พบ mststockid สำหรับเลขเอกสารนี้',
+                          message: 'กรุณาเพิ่มสินค้าก่อนบันทึก',
                           success: false,
                         );
                         return;
                       }
 
                       final inventoryCheck =
-                          stockData
+                          stockDataM
                               .map((e) {
                                 final qty = int.tryParse(
                                   e['จำนวน']?.trim() ?? '',
@@ -395,7 +395,7 @@ class _MotorcycleStockPage extends State<MotorcycleStockPage> {
                             success: true,
                           );
                           setState(() {
-                            stockData.clear();
+                            stockDataM.clear();
                             mstStockId = null;
                           });
                         }
